@@ -1,6 +1,6 @@
 $token = "<provide XML token here>"
 $baseUri = "https://<Provide Environment Id here>.rest.afas.online/profitrestservices";
-$getConnector = "T4E_IAM3_Persons"
+$getConnector = "T4E_IAM3_Persons" # T4E_IAM3_Persons or T4E_HelloID_Employees
 $updateConnector = "KnEmployee"
 
 # Enable TLS 1.2
