@@ -31,33 +31,26 @@ try{
 
     #Change mapping here
     $account = [PSCustomObject]@{
-        'AfasEmployee' = @{
+        'KnPerson' = @{
             'Element' = @{
-                '@EmId' = $getResponse.rows.medewerker;
-                'Objects' = @(@{
-                    'KnPerson' = @{
-                        'Element' = @{
-                            'Fields' = @{
-                                # Zoek op BcCo (Persoons-ID)
-                                'MatchPer' = 0;
-                                # Nummer
-                                'BcCo' = $getResponse.rows.Persoonsnummer;
+                'Fields' = @{
+                    # Zoek op BcCo (Persoons-ID)
+                    'MatchPer' = "0";
+                    # Nummer
+                    'BcCo' = $getResponse.rows.Persoonsnummer;
+            
+                    # E-Mail werk  
+                    'EmAd' = $emailaddress;
+                    # E-Mail toegang
+                    'EmailPortal' = $userPrincipalName;
                                 
-                                # E-Mail werk  
-                                'EmAd' = $emailaddress;
-                                # E-Mail toegang
-                                'EmailPortal' = $userPrincipalName;
-                                
-                                <#
-                                # phone.business.fixed
-                                'TeNr' = $telephoneNumber;
-                                # phone.business.mobile
-                                'MbNr' = $mobile;
-                                #>
-                            }
-                        }
-                    }
-                })
+                    <#
+                    # phone.business.fixed
+                    'TeNr' = $telephoneNumber;
+                    # phone.business.mobile
+                    'MbNr' = $mobile;
+                    #>
+                }
             }
         }
     }
@@ -67,13 +60,13 @@ try{
         $putUri = $BaseUri + "/connectors/" + $updateConnector
 
         $putResponse = Invoke-RestMethod -Method Put -Uri $putUri -Body $body -ContentType "application/json;charset=utf-8" -Headers $Headers -UseBasicParsing
-        $aRef = $($account.AfasEmployee.Values.'@EmId')
+        $aRef = $($account.KnPerson.Element.Values.BcCo)
     }
     $success = $True;
-    $auditMessage = " $($account.AfasEmployee.Values.'@EmId') successfully"; 
+    $auditMessage = " $($account.KnPerson.Element.Values.BcCo) successfully"; 
 }catch{
     $errResponse = $_;
-    $auditMessage = " $($account.AfasEmployee.Values.'@EmId') : ${errResponse}";
+    $auditMessage = " $($account.KnPerson.Element.Values.BcCo) : ${errResponse}";
 }
 
 #build up result
