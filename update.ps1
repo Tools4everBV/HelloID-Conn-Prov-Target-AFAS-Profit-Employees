@@ -3,7 +3,7 @@ $config = ConvertFrom-Json $configuration
 $BaseUri = $config.BaseUri
 $Token = $config.Token
 $getConnector = "T4E_HelloID_Users"
-$updateConnector = "KnEmployee"
+$updateConnector = "KnPerson"
 
 # Enable TLS 1.2
 if ([Net.ServicePointManager]::SecurityProtocol -notmatch "Tls12") {
