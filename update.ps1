@@ -30,31 +30,58 @@ try{
     $getResponse = Invoke-RestMethod -Method Get -Uri $getUri -ContentType "application/json;charset=utf-8" -Headers $Headers -UseBasicParsing
 
     #Change mapping here
-    $account = [PSCustomObject]@{
-        'KnPerson' = @{
-            'Element' = @{
-                'Fields' = @{
-                    # Zoek op BcCo (Persoons-ID)
-                    'MatchPer' = "0";
-                    # Nummer
-                    'BcCo' = $getResponse.rows.Persoonsnummer;
+    # If 'EmailPortal' matches 'Email_werk_gebruiker', skip 'EmailPortal' in update body. AFAS will throw an error when trying to update this with the same value
+    if($getResponse.rows.Email_werk_gebruiker -eq $userPrincipalName){
+        # Update without 'EmailPortal'
+        $account = [PSCustomObject]@{
+            'KnPerson' = @{
+                'Element' = @{
+                    'Fields' = @{
+                        # Zoek op BcCo (Persoons-ID)
+                        'MatchPer' = "0";
+                        # Nummer
+                        'BcCo' = $getResponse.rows.Persoonsnummer;
             
-                    # E-Mail werk  
-                    'EmAd' = $emailaddress;
-                    # E-Mail toegang
-                    'EmailPortal' = $userPrincipalName;
+                        # E-Mail werk  
+                        'EmAd' = $emailaddress;
                                 
-                    <#
-                    # phone.business.fixed
-                    'TeNr' = $telephoneNumber;
-                    # phone.business.mobile
-                    'MbNr' = $mobile;
-                    #>
+                        <#
+                        # phone.business.fixed
+                        'TeNr' = $telephoneNumber;
+                        # phone.business.mobile
+                        'MbNr' = $mobile;
+                        #>
+                    }
+                }
+            }
+        }
+    }else{
+        # Update with 'EmailPortal'
+        $account = [PSCustomObject]@{
+            'KnPerson' = @{
+                'Element' = @{
+                    'Fields' = @{
+                        # Zoek op BcCo (Persoons-ID)
+                        'MatchPer' = "0";
+                        # Nummer
+                        'BcCo' = $getResponse.rows.Persoonsnummer;
+            
+                        # E-Mail werk  
+                        'EmAd' = $emailaddress;
+                        # E-Mail toegang
+                        'EmailPortal' = $userPrincipalName;
+                                
+                        <#
+                        # phone.business.fixed
+                        'TeNr' = $telephoneNumber;
+                        # phone.business.mobile
+                        'MbNr' = $mobile;
+                        #>
+                    }
                 }
             }
         }
     }
-
     if(-Not($dryRun -eq $True)){
         $body = $account | ConvertTo-Json -Depth 10
         $putUri = $BaseUri + "/connectors/" + $updateConnector
