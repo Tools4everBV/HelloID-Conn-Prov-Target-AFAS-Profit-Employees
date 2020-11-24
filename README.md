@@ -55,7 +55,7 @@ When the connector is defined as target system, only the following GetConnector 
 
 In addition to use to the above get-connector, the connector also uses the following build-in Profit update-connectors:
 
-*	KnPerson
+*	KnEmployee
 
 <!-- USAGE EXAMPLES -->
 ## Setup the PowerShell connector
