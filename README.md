@@ -67,7 +67,7 @@ In addition to use to the above get-connector, the connector also uses the follo
     - [ ] update.ps1    
 
 2. Fill in the required fields on the 'Configuration' tab.
-
+ 
 ![image](./assets/config.png)
 
 _For more information about our HelloID PowerShell connectors, please refer to our general [Documentation](https://docs.helloid.com/hc/en-us/articles/360012558020-How-to-configure-a-custom-PowerShell-target-connector) page_
