@@ -65,6 +65,7 @@ In addition to use to the above get-connector, the connector also uses the follo
     - [ ] configuration.json
     - [ ] create.ps1
     - [ ] update.ps1    
+    - [ ] delete.ps1    
 
 2. Fill in the required fields on the 'Configuration' tab.
  

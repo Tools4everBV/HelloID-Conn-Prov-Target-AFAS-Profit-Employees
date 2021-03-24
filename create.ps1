@@ -5,21 +5,22 @@ $Token = $config.Token
 $getConnector = "T4E_HelloID_Users"
 $updateConnector = "KnEmployee"
 
-# Enable TLS 1.2
-if ([Net.ServicePointManager]::SecurityProtocol -notmatch "Tls12") {
-    [Net.ServicePointManager]::SecurityProtocol += [Net.SecurityProtocolType]::Tls12
-}
-
 #Initialize default properties
-$success = $False;
 $p = $person | ConvertFrom-Json;
-$auditMessage = "Profit identity for person " + $p.DisplayName + " not updated successfully";
+$m = $manager | ConvertFrom-Json;
+$aRef = $accountReference | ConvertFrom-Json;
+$mRef = $managerAccountReference | ConvertFrom-Json;
+$success = $False;
+$auditLogs = New-Object Collections.Generic.List[PSCustomObject];
+
+# Set TLS to accept TLS, TLS 1.1 and TLS 1.2
+[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls -bor [Net.SecurityProtocolType]::Tls11 -bor [Net.SecurityProtocolType]::Tls12
 
 $personId = $p.externalId; # Profit Employee Medewerker
-$emailaddress = $p.Accounts.MicrosoftActiveDirectory.userPrincipalName;
-$userPrincipalName = $p.Accounts.MicrosoftActiveDirectory.userPrincipalName;
-# $telephoneNumber = $p.Accounts.MicrosoftActiveDirectory.telephoneNumber;
-# $mobile = $p.Accounts.MicrosoftActiveDirectory.mobile;
+$emailaddress = $p.Accounts.AzureADSchoulens.userPrincipalName;
+$userPrincipalName = $p.Accounts.AzureADSchoulens.userPrincipalName;
+# $telephoneNumber = $p.Accounts.AzureADSchoulens.telephoneNumber;
+# $mobile = $p.Accounts.AzureADSchoulens.mobile;
 
 try{
     $encodedToken = [System.Convert]::ToBase64String([System.Text.Encoding]::ASCII.GetBytes($Token))
@@ -29,94 +30,107 @@ try{
     $getResponse = Invoke-RestMethod -Method Get -Uri $getUri -ContentType "application/json;charset=utf-8" -Headers $Headers -UseBasicParsing
     
     if($getResponse.rows.Count -eq 1){
-        #Change mapping here
-        # If 'EmailPortal' matches 'Email_werk_gebruiker', skip 'EmailPortal' in update body. AFAS will throw an error when trying to update this with the same value
-        if($getResponse.rows.Email_werk_gebruiker -eq $userPrincipalName){
-            # Update without 'EmailPortal'
-            $account = [PSCustomObject]@{
-                'AfasEmployee' = @{
+        # Retrieve current account data for properties to be updated
+        $previousAccount = [PSCustomObject]@{
+            'AfasEmployee' = @{
                     'Element' = @{
                         '@EmId' = $getResponse.rows.Medewerker;
                         'Objects' = @(@{
                             'KnPerson' = @{
                                 'Element' = @{
                                     'Fields' = @{
-                                        # Zoek op BcCo (Persoons-ID)
-                                        'MatchPer' = 0;
-                                        # Nummer
-                                        'BcCo' = $getResponse.rows.Persoonsnummer;
-
                                         # E-Mail werk  
-                                        'EmAd' = $emailaddress;
-
-                                        <#
+                                        'EmAd' = $getResponse.rows.Email_werk;
+                                  
                                         # phone.business.fixed
-                                        'TeNr' = $telephoneNumber;
+                                        'TeNr' = $getResponse.rows.Telefoonnr_werk;
                                         # phone.business.mobile
-                                        'MbNr' = $mobile;
-                                        #>    
+                                        'MbNr' = $getResponse.rows.Mobielnr_werk;  
                                     }
                                 }
                             }
                         })
                     }
                 }
-            }                 
-        }else{
-            # Update with 'EmailPortal'
-            $account = [PSCustomObject]@{
-                'AfasEmployee' = @{
-                    'Element' = @{
-                        '@EmId' = $getResponse.rows.Medewerker;
-                        'Objects' = @(@{
-                            'KnPerson' = @{
-                                'Element' = @{
-                                    'Fields' = @{
-                                        # Zoek op BcCo (Persoons-ID)
-                                        'MatchPer' = 0;
-                                        # Nummer
-                                        'BcCo' = $getResponse.rows.Persoonsnummer;
-
-                                        # E-Mail werk  
-                                        'EmAd' = $emailaddress;
-                                        # E-Mail toegang
-                                        'EmailPortal' = $userPrincipalName;
-
-                                        <#
-                                        # phone.business.fixed
-                                        'TeNr' = $telephoneNumber;
-                                        # phone.business.mobile
-                                        'MbNr' = $mobile;
-                                        #>    
-                                    }
-                                }
-                            }
-                        })
-                    }
-                }
-            }            
         }
+
+        # Map the properties to update
+        $account = [PSCustomObject]@{
+            'AfasEmployee' = @{
+                'Element' = @{
+                    '@EmId' = $getResponse.rows.Medewerker;
+                    'Objects' = @(@{
+                        'KnPerson' = @{
+                            'Element' = @{
+                                'Fields' = @{
+                                    # Zoek op BcCo (Persoons-ID)
+                                    'MatchPer' = 0;
+                                    # Nummer
+                                    'BcCo' = $getResponse.rows.Persoonsnummer;
+
+                                    # E-Mail toegang
+                                    'EmailPortal' = $userPrincipalName;
+
+                                    <#
+                                    # phone.business.fixed
+                                    'TeNr' = $telephoneNumber;
+                                    # phone.business.mobile
+                                    'MbNr' = $mobile;
+                                    #>    
+                                }
+                            }
+                        }
+                    })
+                }
+            }
+        }
+
+        # If '$emailAdddres' does not match current 'EmAd', add 'EmAd' to update body. AFAS will throw an error when trying to update this with the same value
+        if($getResponse.rows.Email_werk -ne $emailaddress){
+            # E-mail werk
+            $account.'AfasEmployee'.'Element'.Objects[0].'KnPerson'.'Element'.'Fields' += @{'EmAd' = $emailaddress}
+            Write-Verbose -Verbose "Updating BusinessEmailAddress '$($getResponse.rows.Email_werk)' with new value '$emailaddress'"
+        }   
+
+        $aRef = $($account.AfasEmployee.Values.'@EmId')
+
         if(-Not($dryRun -eq $True)){
             $body = $account | ConvertTo-Json -Depth 10
-            Write-Verbose $body
+
             $putUri = $BaseUri + "/connectors/" + $updateConnector
             $putResponse = Invoke-RestMethod -Method Put -Uri $putUri -Body $body -ContentType "application/json;charset=utf-8" -Headers $Headers -UseBasicParsing
-            $aRef = $($account.AfasEmployee.Values.'@EmId')
         }
-        $success = $True;
-        $auditMessage = " $($account.AfasEmployee.Values.'@EmId') already exists. Identity updated instead of";
+
+        $auditLogs.Add([PSCustomObject]@{
+            Action = "CreateAccount"
+            Message = "Correlated to and updated fields of account with id $aRef"
+            IsError = $false;
+        });
+
+        $success = $true;       
     }
 }catch{
-    $errResponse = $_;
-    $auditMessage = " $($account.AfasEmployee.Values.'@EmId') : ${errResponse}";
+    $auditLogs.Add([PSCustomObject]@{
+        Action = "CreateAccount"
+        Message = "Error correlating and updating fields of account with Id $($aRef): $($_)"
+        IsError = $True
+    });
+    Write-Error $_;
 }
 
-#build up result
+# Send results
 $result = [PSCustomObject]@{
-    Success= $success;
-    AccountReference= $aRef;
-    AuditDetails=$auditMessage;
-    Account= $account;
+	Success= $success;
+	AccountReference= $aRef;
+	AuditLogs = $auditLogs;
+    Account = $account;
+    PreviousAccount = $previousAccount;    
+
+    # Optionally return data for use in other systems
+    ExportData       = [PSCustomObject]@{
+        EmployeeId              = $($account.AfasEmployee.Values.'@EmId')
+        BusinessEmailAddress    = $($account.AfasEmployee.Element.Objects[0].KnPerson.Element.Fields.EmAd)
+        PortalEmailAddress      = $($account.AfasEmployee.Element.Objects[0].KnPerson.Element.Fields.EmailPortal)
+    };    
 };
-    
 Write-Output $result | ConvertTo-Json -Depth 10;

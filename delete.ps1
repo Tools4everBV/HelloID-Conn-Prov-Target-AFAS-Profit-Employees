@@ -17,10 +17,10 @@ $auditLogs = New-Object Collections.Generic.List[PSCustomObject];
 [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls -bor [Net.SecurityProtocolType]::Tls11 -bor [Net.SecurityProtocolType]::Tls12
 
 $personId = $p.externalId; # Profit Employee Medewerker
-$emailaddress = $p.Accounts.AzureADSchoulens.userPrincipalName;
-$userPrincipalName = $p.Accounts.AzureADSchoulens.userPrincipalName;
-# $telephoneNumber = $p.Accounts.AzureADSchoulens.telephoneNumber;
-# $mobile = $p.Accounts.AzureADSchoulens.mobile;
+$emailaddress = "$personId@domain.com"; # Unique value based of PersonId because at the revoke action we want to clear the unique fields
+$userPrincipalName = "$personId@domain.com"; # Unique value based of PersonId because at the revoke action we want to clear the unique fields
+# $telephoneNumber = $p.Accounts.MicrosoftActiveDirectory.telephoneNumber;
+# $mobile = $p.Accounts.MicrosoftActiveDirectory.mobile;
 
 try{
     $encodedToken = [System.Convert]::ToBase64String([System.Text.Encoding]::ASCII.GetBytes($Token))
@@ -100,20 +100,20 @@ try{
         }
 
         $auditLogs.Add([PSCustomObject]@{
-            Action = "UpdateAccount"
-            Message = "Updated fields of account with id $aRef"
+            Action = "DeleteAccount"
+            Message = "Deleted link and updated fields of account with id $aRef"
             IsError = $false;
         });
 
-        $success = $true;     
+        $success = $true;       
     }
 }catch{
     $auditLogs.Add([PSCustomObject]@{
-        Action = "UpdateAccount"
-        Message = "Error updating fields of account with Id $($aRef): $($_)"
+        Action = "DeleteAccount"
+        Message = "Error deleting link and updating fields of account with Id $($aRef): $($_)"
         IsError = $True
     });
-	Write-Error $_;
+    Write-Error $_;
 }
 
 # Send results
