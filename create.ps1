@@ -147,7 +147,7 @@ $result = [PSCustomObject]@{
 
 # Only add the data to ExportData if it has actually been updated, since we want to store the data HelloID has sent
 if($EmAdUpdated -eq $true){
-    $result.ExportData | Add-Member -MemberType NoteProperty -Name BusinessEmailAddress -Value $($account.AfasEmployee.Element.Objects[0].KnPerson.Element.Fields.EmAd) -Value "EmAd" -Force
+    $result.ExportData | Add-Member -MemberType NoteProperty -Name BusinessEmailAddress -Value $($account.AfasEmployee.Element.Objects[0].KnPerson.Element.Fields.EmAd) -Force
 }
 if($EmailPortalUpdated -eq $true){
     $result.ExportData | Add-Member -MemberType NoteProperty -Name PortalEmailAddress -Value $($account.AfasEmployee.Element.Objects[0].KnPerson.Element.Fields.EmailPortal) -Force
