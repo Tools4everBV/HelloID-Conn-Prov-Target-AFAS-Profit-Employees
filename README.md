@@ -15,7 +15,7 @@
 
 
 ## Introduction
-The interface to communicate with Profit is through a set of GetConnectors, which is component that allows the creation of custom views on the Profit data. GetConnectors are based on a pre-defined 'data collection', which is an existing view based on the data inside the Profit database. 
+The interface to communicate with Profit is through a set of GetConnectors, which is component that allows the creation of custom views on the Profit data. GetConnectors are based on a pre-defined 'data collection', which is an existing view based on the data inside the Profit database.
 
 For this connector we have created a default set, which can be imported directly into the AFAS Profit environment.
 
@@ -26,19 +26,17 @@ By using this connector you will have the ability to update identities from the 
 Since we won't create employees with a target connector the create action is just an update.
 Also, because of this, we only have the create and update action, no enable, disable or delete ations.
 
-Connecting to Profit is done using the app connector system. 
+Connecting to Profit is done using the app connector system.
 Please see the following pages from the AFAS Knowledge Base for more information.
 
-[Create the APP connector](https://help.afas.nl/help/NL/SE/App_Apps_Custom_Add.htm)
-
-[Manage the APP connector](https://help.afas.nl/help/NL/SE/App_Apps_Custom_Maint.htm)
-
+[Create the APP connector](https://help.afas.nl/help/NL/SE/App_Apps_Custom_Add.htm)\
+[Manage the APP connector](https://help.afas.nl/help/NL/SE/App_Apps_Custom_Maint.htm)\
 [Manual add a token to the APP connector](https://help.afas.nl/help/NL/SE/App_Apps_Custom_Tokens_Manual.htm)
 
 
 ### Source
 
-The following GetConnectors are required by HelloID when the system is defined as source system: 
+The following GetConnectors are required by HelloID when the system is defined as source system:
 
 *	Tools4ever - HelloID - T4E_HelloID_Employments
 *	Tools4ever - HelloID - T4E_HelloID_Positions
@@ -61,12 +59,10 @@ In addition to use to the above get-connector, the connector also uses the follo
 ## Setup the PowerShell connector
 
 1. Add a new 'Target System' to HelloID and make sure to import all the necessary files.
-
-    - [ ] configuration.json
-    - [ ] create.ps1
-    - [ ] update.ps1    
-    - [ ] delete.ps1    
-
+    * [ ] configuration.json
+    * [ ] create.ps1
+    * [ ] update.ps1
+    * [ ] delete.ps1
 2. Fill in the required fields on the 'Configuration' tab.
  
 ![image](./assets/config.png)

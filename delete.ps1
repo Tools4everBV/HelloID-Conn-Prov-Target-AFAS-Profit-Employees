@@ -1,127 +1,190 @@
-$config = ConvertFrom-Json $configuration
+#region Config
+$Config = $configuration | ConvertFrom-Json
 
-$BaseUri = $config.BaseUri
-$Token = $config.Token
-$getConnector = "T4E_HelloID_Users"
-$updateConnector = "KnEmployee"
+$BaseUri = $Config.BaseUri.TrimEnd('/')
+$Token   = $Config.Token
 
-#Initialize default properties
-$p = $person | ConvertFrom-Json;
-$m = $manager | ConvertFrom-Json;
-$aRef = $accountReference | ConvertFrom-Json;
-$mRef = $managerAccountReference | ConvertFrom-Json;
-$success = $False;
-$auditLogs = New-Object Collections.Generic.List[PSCustomObject];
+$GetConnector = "T4E_HelloID_Users"
+$UpdateConnector = "KnEmployee"
+#endregion Config
 
-# Set TLS to accept TLS, TLS 1.1 and TLS 1.2
-[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls -bor [Net.SecurityProtocolType]::Tls11 -bor [Net.SecurityProtocolType]::Tls12
+#region default properties
+#$p = $person | ConvertFrom-Json
+#$m = $manager | ConvertFrom-Json
 
-$filterfieldid = "Persoonsnummer"
-$filtervalue = $aRef.Persoonsnummer; # Has to match the AFAS value of the specified filter field ($filterfieldid)
-$emailaddress = "$($aRef.Persoonsnummer)@domain.com"; # Unique value based of PersonId because at the revoke action we want to clear the unique fields
-$userPrincipalName = "$($aRef.Persoonsnummer)@domain.com"; # Unique value based of PersonId because at the revoke action we want to clear the unique fields
-# $telephoneNumber = $p.Accounts.MicrosoftActiveDirectory.telephoneNumber;
-# $mobile = $p.Accounts.MicrosoftActiveDirectory.mobile;
+$aRef = $accountReference | ConvertFrom-Json
+#$mRef = $managerAccountReference | ConvertFrom-Json
+
+$Success = $False
+$AuditLogs = [Collections.Generic.List[PSCustomObject]]::new()
+#endregion default properties
+
+$FilterfieldName = $Config.FilterfieldName
+$FilterValue = $aRef.$FilterfieldName # Has to match the AFAS value of the specified filter field ($FilterfieldName)
+
+# Set TLS to accept TLS 1.1 and TLS 1.2
+[Net.ServicePointManager]::SecurityProtocol = @(
+    [Net.SecurityProtocolType]::Tls11
+    [Net.SecurityProtocolType]::Tls12
+)
+
+# The new account variables 
+$Account = @{
+    # E-Mail toegang - Check with AFAS Administrator if this needs to be set
+    'EmailPortal' = "$($aRef.Persoonsnummer)@domain.com" # Unique value based of PersonId because at the revoke action we want to clear the unique fields
+    
+    # E-Mail werk  
+    'EmAd' = "$($aRef.Persoonsnummer)@domain.com" # Unique value based of PersonId because at the revoke action we want to clear the unique fields
+
+    # phone.business.fixed
+    # 'TeNr' = $p.Accounts.MicrosoftActiveDirectory.telephoneNumber
+
+    # phone.business.mobile
+    # 'MbNr' = $p.Accounts.MicrosoftActiveDirectory.mobile
+}
 
 try{
-    $encodedToken = [System.Convert]::ToBase64String([System.Text.Encoding]::ASCII.GetBytes($Token))
-    $authValue = "AfasToken $encodedToken"
-    $Headers = @{ Authorization = $authValue }
-    $getUri = $BaseUri + "/connectors/" + $getConnector + "?filterfieldids=$filterfieldid&filtervalues=$filtervalue&operatortypes=1"
-    $getResponse = Invoke-RestMethod -Method Get -Uri $getUri -ContentType "application/json;charset=utf-8" -Headers $Headers -UseBasicParsing
+    $EncodedToken = [System.Convert]::ToBase64String(
+        [System.Text.Encoding]::ASCII.GetBytes($Token))
 
-    if($getResponse.rows.Count -eq 1){
-        # Retrieve current account data for properties to be updated
-        $previousAccount = [PSCustomObject]@{
-            'AfasEmployee' = @{
-                    'Element' = @{
-                        '@EmId' = $getResponse.rows.Medewerker;
-                        'Objects' = @(@{
-                            'KnPerson' = @{
-                                'Element' = @{
-                                    'Fields' = @{
-                                        # E-Mail werk  
-                                        'EmAd' = $getResponse.rows.Email_werk;
-                                  
-                                        # phone.business.fixed
-                                        'TeNr' = $getResponse.rows.Telefoonnr_werk;
-                                        # phone.business.mobile
-                                        'MbNr' = $getResponse.rows.Mobielnr_werk;  
-                                    }
-                                }
-                            }
-                        })
-                    }
-                }
+    $RestMethod = @{
+        UseBasicParsing = $True
+        ContentType = "application/json;charset=utf-8"
+        Headers = @{
+            Authorization = "AfasToken $($EncodedToken)"
         }
-
-        # Map the properties to update
-        $account = [PSCustomObject]@{
-            'AfasEmployee' = @{
-                'Element' = @{
-                    '@EmId' = $getResponse.rows.Medewerker;
-                    'Objects' = @(@{
-                        'KnPerson' = @{
-                            'Element' = @{
-                                'Fields' = @{
-                                    # Zoek op BcCo (Persoons-ID)
-                                    'MatchPer' = 0;
-                                    # Nummer
-                                    'BcCo' = $getResponse.rows.Persoonsnummer;
-
-                                    # E-Mail toegang - Check with AFAS Administrator if this needs to be set
-                                    # 'EmailPortal' = $userPrincipalName;
-
-                                    <#
-                                    # phone.business.fixed
-                                    'TeNr' = $telephoneNumber;
-                                    # phone.business.mobile
-                                    'MbNr' = $mobile;
-                                    #>    
-                                }
-                            }
-                        }
-                    })
-                }
-            }
-        }     
-
-        # If '$emailAdddres' does not match current 'EmAd', add 'EmAd' to update body. AFAS will throw an error when trying to update this with the same value
-        if( $getResponse.rows.Email_werk -ne $emailaddress ){
-            # E-mail werk
-            $account.'AfasEmployee'.'Element'.Objects[0].'KnPerson'.'Element'.'Fields' += @{'EmAd' = $emailaddress}
-            Write-Verbose -Verbose "Updating BusinessEmailAddress '$($getResponse.rows.Email_werk)' with new value '$emailaddress'"
-        }   
-
-        if(-Not($dryRun -eq $True)){
-            $body = $account | ConvertTo-Json -Depth 10
-
-            $putUri = $BaseUri + "/connectors/" + $updateConnector
-            $putResponse = Invoke-RestMethod -Method Put -Uri $putUri -Body $body -ContentType "application/json;charset=utf-8" -Headers $Headers -UseBasicParsing
-        }
-
-        $auditLogs.Add([PSCustomObject]@{
-            Action = "DeleteAccount"
-            Message = "Deleted link and updated fields of account with id $($aRef.Medewerker)"
-            IsError = $false;
-        });
-
-        $success = $true;       
     }
-}catch{
+
+    #fetch Employee from AFAS
+    $Uri = "$($BaseUri)/connectors/$($getConnector)"
+
+    $AFASEmployee = Invoke-RestMethod @RestMethod -Method Get -Uri $Uri -Body @{
+        filterfieldids = $FilterfieldName
+        filtervalues = $FilterValue
+        operatortypes = 1
+    } | Select-Object -ExpandProperty 'rows'
+
+    # validating that we only get one user
+    if ($AFASEmployee.Count -eq 0) {
+        throw "No user found where field '$FilterfieldName' has value '$FilterValue'"
+    }
+
+    if ($AFASEmployee.Count -ge 2) {
+        throw "Multiple user found where field '$FilterfieldName' has value '$FilterValue'"
+    }
+
+    # Retrieve current account data for properties to be updated
+    $PreviousAccount = @{
+        # E-Mail toegang
+        'EmailPortal' = $AFASEmployee.Email_werk_gebruiker
+        # E-Mail werk  
+        'EmAd' = $AFASEmployee.Email_werk
+        # phone.business.fixed
+        'TeNr' = $AFASEmployee.Telefoonnr_werk
+        # phone.business.mobile
+        'MbNr' = $AFASEmployee.Mobielnr_werk
+        # Zoeknaam
+        'SeNm' = ''
+        # Fax werk
+        'FaNr' = ''
+    }
+
+    # fill the UpdatedFields with all changed values
+    $UpdatedFields = @{}
+
+    foreach ($Key in $Account.Keys) {
+        # make sure all the keys in the $Account exits in the $PreviousAccount
+        if (-Not $PreviousAccount.ContainsKey($Key)) {
+            throw "The previous account doesn't contain the key '$Key', aborting..."
+        }
+
+        # make empty values null in $Account
+        if ([string]::IsNullOrWhiteSpace($Account[$Key])) {
+            $Account[$Key] = $null
+        }
+
+        if ($PreviousAccount[$Key] -cne $Account[$Key]) {
+            $UpdatedFields.Add($Key, $Account[$Key])
+
+            Write-Information "Updating field $($Key) '$($PreviousAccount[$Key])' with new value '$($Account[$Key])'"
+        }
+    }
+
+    # only keep the keys defined in the account
+    $PreviousAccount = $PreviousAccount | Select-Object -Property ([string[]]$Account.Keys)
+
+    # only if something changed, we send an update to AFAS.
+    if ($UpdatedFields.count -gt 0) {
+        Write-Verbose -Verbose "There is something to update"
+
+        # this is the boilerplate for the update, we will fill it with the correct data after.
+        $Template = '{"AfasEmployee":{"Element":{"Objects":[{"KnPerson":{"Element":{"Fields":{}}}}],"@EmId":null}}}' | ConvertFrom-Json
+
+        # Set employee ID
+        $Template.AfasEmployee.Element.'@EmId' = $AFASEmployee.Medewerker
+
+        # Reference to the KnPerson Fields property
+        $Fields = $Template.AfasEmployee.Element.Objects[0].KnPerson.Element.Fields
+
+        # set the default update properties
+        $Fields | Add-Member -NotePropertyMembers @{
+            # Zoek op BcCo (Persoons-ID)
+            'MatchPer' = 0
+            # Persoons-ID
+            'BcCo' = $AFASEmployee.Persoonsnummer
+        }
+
+        # set the updated properties
+        $Fields | Add-Member -NotePropertyMembers $UpdatedFields
+
+        if (-Not $dryRun -eq $True) {
+            $Uri = "$($BaseUri)/connectors/$($updateConnector)"
+            $Body = $Template | ConvertTo-Json -Depth 10 -Compress
+
+            [void] (Invoke-RestMethod @RestMethod -Method Put -Uri $Uri -Body $Body)
+        }
+        else {
+            # for the dryrun, we dump the body in the verbose logging
+            Write-Verbose -Verbose (
+                $Template | ConvertTo-Json -Depth 10
+            )
+        }
+
+        Write-Verbose -Verbose "Updated person"
+    }
+    else {
+        Write-Verbose -Verbose "Nothing to update"
+    }
+
+    # Set aRef object for use in futher actions
+    $aRef = [PSCustomObject]@{
+        Medewerker = $AFASEmployee.Medewerker
+        Persoonsnummer = $AFASEmployee.Persoonsnummer
+    }
+
+    $auditLogs.Add([PSCustomObject]@{
+        Action = "DeleteAccount"
+        Message = "Deleted link and updated fields of account with id $($aRef.Medewerker)"
+        IsError = $false
+    })
+
+    $success = $true
+}
+catch {
     $auditLogs.Add([PSCustomObject]@{
         Action = "DeleteAccount"
         Message = "Error deleting link and updating fields of account with Id $($aRef.Medewerker): $($_)"
         IsError = $True
-    });
-    Write-Warning $_;
+    })
+    Write-Warning $_
 }
 
 # Send results
 $result = [PSCustomObject]@{
-	Success= $success;
-	AccountReference= $aRef;
-	AuditLogs = $auditLogs;
-    Account = $account;
-};
-Write-Output $result | ConvertTo-Json -Depth 10;
+    Success = $success
+    AccountReference = $aRef
+    AuditLogs = $auditLogs
+    Account = $account
+}
+
+Write-Output $result | ConvertTo-Json -Depth 10

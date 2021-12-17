@@ -1,24 +1,42 @@
 [
-    {
-      "key": "BaseUri",
-      "type": "input",
-      "defaultValue": "",
-      "templateOptions": {
-        "label": "Base Uri",
-        "placeholder": "https://12345.rest.afas.online/profitrestservices",
-        "required": true
-      }
-    },
-    {
-      "key": "Token",
-      "type": "input",
-      "defaultValue": "",
-      "templateOptions": {
-        "label": "Token in XML format",
-        "type": "password",
-        "placeholder": "<token><version>1</version><data>D5R324DD5F4TRD945E530ED3CDD70D94BBDEC4C732B43F285ECB12345678</data></token>",
-        "description": "",
-        "required": true
-      }
+  {
+    "key": "BaseUri",
+    "type": "input",
+    "defaultValue": "",
+    "templateOptions": {
+      "label": "Base Uri",
+      "placeholder": "https://12345.rest.afas.online/profitrestservices",
+      "required": true
     }
-  ]
+  },
+  {
+    "key": "Token",
+    "type": "input",
+    "defaultValue": "",
+    "templateOptions": {
+      "label": "Token in XML format",
+      "type": "password",
+      "placeholder": "<token><version>1</version><data>D5R324DD5F4TRD945E530ED3CDD70D94BBDEC4C732B43F285ECB12345678</data></token>",
+      "description": "",
+      "required": true
+    }
+  },
+  {
+    "key": "FilterfieldName",
+    "type": "select",
+    "defaultValue": "Persoonsnummer",
+    "templateOptions": {
+      "label": "Identify employees by:",
+      "options": [
+        {
+          "value": "Persoonsnummer",
+          "label": "Persoonsnummer"
+        },
+        {
+          "value": "Medewerker",
+          "label": "Medewerkersnummer"
+        }
+      ]
+    }
+  }
+]
