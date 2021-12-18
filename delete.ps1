@@ -56,7 +56,7 @@ try{
     }
 
     #fetch Employee from AFAS
-    $Uri = "$($BaseUri)/connectors/$($getConnector)"
+    $Uri = "$($BaseUri)/connectors/$($GetConnector)"
 
     $AFASEmployee = Invoke-RestMethod @RestMethod -Method Get -Uri $Uri -Body @{
         filterfieldids = $FilterfieldName
@@ -92,7 +92,7 @@ try{
     # fill the UpdatedFields with all changed values
     $UpdatedFields = @{}
 
-    foreach ($Key in $Account.Keys) {
+    foreach ($Key in $Account.Keys.Clone()) {
         # make sure all the keys in the $Account exits in the $PreviousAccount
         if (-Not $PreviousAccount.ContainsKey($Key)) {
             throw "The previous account doesn't contain the key '$Key', aborting..."
@@ -100,7 +100,7 @@ try{
 
         # make empty values null in $Account
         if ([string]::IsNullOrWhiteSpace($Account[$Key])) {
-            $Account[$Key] = $null
+            $Account[$Key] = $Null
         }
 
         if ($PreviousAccount[$Key] -cne $Account[$Key]) {
@@ -112,6 +112,7 @@ try{
 
     # only keep the keys defined in the account
     $PreviousAccount = $PreviousAccount | Select-Object -Property ([string[]]$Account.Keys)
+    $Account = [PSCustomObject]$Account
 
     # only if something changed, we send an update to AFAS.
     if ($UpdatedFields.count -gt 0) {
@@ -138,7 +139,7 @@ try{
         $Fields | Add-Member -NotePropertyMembers $UpdatedFields
 
         if (-Not $dryRun -eq $True) {
-            $Uri = "$($BaseUri)/connectors/$($updateConnector)"
+            $Uri = "$($BaseUri)/connectors/$($UpdateConnector)"
             $Body = $Template | ConvertTo-Json -Depth 10 -Compress
 
             [void] (Invoke-RestMethod @RestMethod -Method Put -Uri $Uri -Body $Body)
@@ -156,22 +157,32 @@ try{
         Write-Verbose -Verbose "Nothing to update"
     }
 
+    $PreviousAccount | Add-Member -NotePropertyMembers @{
+        Medewerker = $aRef.Medewerker
+        Persoonsnummer = $aRef.Persoonsnummer
+    }
+
+    $Account | Add-Member -NotePropertyMembers @{
+        Medewerker = $AFASEmployee.Medewerker
+        Persoonsnummer = $AFASEmployee.Persoonsnummer
+    }
+
     # Set aRef object for use in futher actions
     $aRef = [PSCustomObject]@{
         Medewerker = $AFASEmployee.Medewerker
         Persoonsnummer = $AFASEmployee.Persoonsnummer
     }
 
-    $auditLogs.Add([PSCustomObject]@{
+    $AuditLogs.Add([PSCustomObject]@{
         Action = "DeleteAccount"
         Message = "Deleted link and updated fields of account with id $($aRef.Medewerker)"
         IsError = $false
     })
 
-    $success = $true
+    $Success = $true
 }
 catch {
-    $auditLogs.Add([PSCustomObject]@{
+    $AuditLogs.Add([PSCustomObject]@{
         Action = "DeleteAccount"
         Message = "Error deleting link and updating fields of account with Id $($aRef.Medewerker): $($_)"
         IsError = $True
@@ -180,11 +191,12 @@ catch {
 }
 
 # Send results
-$result = [PSCustomObject]@{
-    Success = $success
+$Result = [PSCustomObject]@{
+    Success = $Success
     AccountReference = $aRef
-    AuditLogs = $auditLogs
-    Account = $account
+    AuditLogs = $AuditLogs
+    Account = $Account
+    PreviousAccount = $PreviousAccount  
 }
 
-Write-Output $result | ConvertTo-Json -Depth 10
+Write-Output $Result | ConvertTo-Json -Depth 10

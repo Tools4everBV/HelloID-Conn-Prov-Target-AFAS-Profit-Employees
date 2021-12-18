@@ -56,7 +56,7 @@ try{
     }
 
     #fetch Employee from AFAS
-    $Uri = "$($BaseUri)/connectors/$($getConnector)"
+    $Uri = "$($BaseUri)/connectors/$($GetConnector)"
 
     $AFASEmployee = Invoke-RestMethod @RestMethod -Method Get -Uri $Uri -Body @{
         filterfieldids = $FilterfieldName
@@ -72,7 +72,6 @@ try{
     if ($AFASEmployee.Count -ge 2) {
         throw "Multiple user found where field '$FilterfieldName' has value '$FilterValue'"
     }
-
 
     # Retrieve current account data for properties to be updated
     $PreviousAccount = @{
@@ -93,7 +92,7 @@ try{
     # fill the UpdatedFields with all changed values
     $UpdatedFields = @{}
 
-    foreach ($Key in $Account.Keys) {
+    foreach ($Key in $Account.Keys.Clone()) {
         # make sure all the keys in the $Account exits in the $PreviousAccount
         if (-Not $PreviousAccount.ContainsKey($Key)) {
             throw "The previous account doesn't contain the key '$Key', aborting..."
@@ -101,7 +100,7 @@ try{
 
         # make empty values null in $Account
         if ([string]::IsNullOrWhiteSpace($Account[$Key])) {
-            $Account[$Key] = $null
+            $Account[$Key] = $Null
         }
 
         if ($PreviousAccount[$Key] -cne $Account[$Key]) {
@@ -113,6 +112,7 @@ try{
 
     # only keep the keys defined in the account
     $PreviousAccount = $PreviousAccount | Select-Object -Property ([string[]]$Account.Keys)
+    $Account = [PSCustomObject]$Account
 
     # only if something changed, we send an update to AFAS.
     if ($UpdatedFields.count -gt 0) {
@@ -139,7 +139,7 @@ try{
         $Fields | Add-Member -NotePropertyMembers $UpdatedFields
 
         if (-Not $dryRun -eq $True) {
-            $Uri = "$($BaseUri)/connectors/$($updateConnector)"
+            $Uri = "$($BaseUri)/connectors/$($UpdateConnector)"
             $Body = $Template | ConvertTo-Json -Depth 10 -Compress
 
             [void] (Invoke-RestMethod @RestMethod -Method Put -Uri $Uri -Body $Body)
@@ -155,6 +155,16 @@ try{
     }
     else {
         Write-Verbose -Verbose "Nothing to update"
+    }
+
+    $PreviousAccount | Add-Member -NotePropertyMembers @{
+        Medewerker = $aRef.Medewerker
+        Persoonsnummer = $aRef.Persoonsnummer
+    }
+
+    $Account | Add-Member -NotePropertyMembers @{
+        Medewerker = $AFASEmployee.Medewerker
+        Persoonsnummer = $AFASEmployee.Persoonsnummer
     }
 
     # Set aRef object for use in futher actions
