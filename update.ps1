@@ -1,5 +1,5 @@
 #region Config
-$Config = $configuration | ConvertFrom-Json
+$Config = $Configuration | ConvertFrom-Json
 
 $BaseUri = $Config.BaseUri.TrimEnd('/')
 $Token   = $Config.Token
@@ -9,11 +9,11 @@ $UpdateConnector = "KnEmployee"
 #endregion Config
 
 #region default properties
-$p = $person | ConvertFrom-Json
-#$m = $manager | ConvertFrom-Json
+$p = $Person | ConvertFrom-Json
+#$m = $Manager | ConvertFrom-Json
 
-$aRef = $accountReference | ConvertFrom-Json
-#$mRef = $managerAccountReference | ConvertFrom-Json
+$aRef = $AccountReference | ConvertFrom-Json
+#$mRef = $ManagerAccountReference | ConvertFrom-Json
 
 $Success = $False
 $AuditLogs = [Collections.Generic.List[PSCustomObject]]::new()
@@ -32,7 +32,7 @@ $FilterValue = $aRef.$FilterfieldName # Has to match the AFAS value of the speci
 $Account = @{
     # E-Mail toegang - Check with AFAS Administrator if this needs to be set
     'EmailPortal' = $p.Accounts.MicrosoftActiveDirectory.userPrincipalName
-    
+
     # E-Mail werk  
     'EmAd' = $p.Accounts.MicrosoftActiveDirectory.mail
 
@@ -43,7 +43,8 @@ $Account = @{
     # 'MbNr' = $p.Accounts.MicrosoftActiveDirectory.mobile
 }
 
-try{
+# Start Script
+try {
     $EncodedToken = [System.Convert]::ToBase64String(
         [System.Text.Encoding]::ASCII.GetBytes($Token))
 
@@ -55,7 +56,7 @@ try{
         }
     }
 
-    #fetch Employee from AFAS
+    # Fetch Employee from AFAS
     $Uri = "$($BaseUri)/connectors/$($GetConnector)"
 
     $AFASEmployee = Invoke-RestMethod @RestMethod -Method Get -Uri $Uri -Body @{
@@ -64,13 +65,13 @@ try{
         operatortypes = 1
     } | Select-Object -ExpandProperty 'rows'
 
-    # validating that we only get one user
+    # Validating that we only get one user
     if ($AFASEmployee.Count -eq 0) {
         throw "No user found where field '$FilterfieldName' has value '$FilterValue'"
     }
 
     if ($AFASEmployee.Count -ge 2) {
-        throw "Multiple user found where field '$FilterfieldName' has value '$FilterValue'"
+        throw "Multiple users found where field '$FilterfieldName' has value '$FilterValue'"
     }
 
     # Retrieve current account data for properties to be updated
@@ -89,36 +90,36 @@ try{
         'FaNr' = ''
     }
 
-    # fill the UpdatedFields with all changed values
+    # Fill the UpdatedFields with all changed values
     $UpdatedFields = @{}
 
     foreach ($Key in $Account.Keys.Clone()) {
-        # make sure all the keys in the $Account exits in the $PreviousAccount
+        # Make sure all the keys in the $Account exits in the $PreviousAccount
         if (-Not $PreviousAccount.ContainsKey($Key)) {
             throw "The previous account doesn't contain the key '$Key', aborting..."
         }
 
-        # make empty values null in $Account
+        # Make empty values null in $Account
         if ([string]::IsNullOrWhiteSpace($Account[$Key])) {
             $Account[$Key] = $Null
         }
 
-        if ($PreviousAccount[$Key] -cne $Account[$Key]) {
+        if ($PreviousAccount[$Key] -ne $Account[$Key]) {
             $UpdatedFields.Add($Key, $Account[$Key])
 
             Write-Information "Updating field $($Key) '$($PreviousAccount[$Key])' with new value '$($Account[$Key])'"
         }
     }
 
-    # only keep the keys defined in the account
+    # Only keep the keys defined in the account
     $PreviousAccount = $PreviousAccount | Select-Object -Property ([string[]]$Account.Keys)
     $Account = [PSCustomObject]$Account
 
-    # only if something changed, we send an update to AFAS.
+    # Only if something changed, we send an update to AFAS.
     if ($UpdatedFields.count -gt 0) {
         Write-Verbose -Verbose "There is something to update"
 
-        # this is the boilerplate for the update, we will fill it with the correct data after.
+        # This is the boilerplate for the update, we will fill it with the correct data after.
         $Template = '{"AfasEmployee":{"Element":{"Objects":[{"KnPerson":{"Element":{"Fields":{}}}}],"@EmId":null}}}' | ConvertFrom-Json
 
         # Set employee ID
@@ -127,7 +128,7 @@ try{
         # Reference to the KnPerson Fields property
         $Fields = $Template.AfasEmployee.Element.Objects[0].KnPerson.Element.Fields
 
-        # set the default update properties
+        # Set the default update properties
         $Fields | Add-Member -NotePropertyMembers @{
             # Zoek op BcCo (Persoons-ID)
             'MatchPer' = 0
@@ -135,17 +136,17 @@ try{
             'BcCo' = $AFASEmployee.Persoonsnummer
         }
 
-        # set the updated properties
+        # Set the updated properties
         $Fields | Add-Member -NotePropertyMembers $UpdatedFields
 
-        if (-Not $dryRun -eq $True) {
+        if (-Not ($dryRun -eq $True)) {
             $Uri = "$($BaseUri)/connectors/$($UpdateConnector)"
             $Body = $Template | ConvertTo-Json -Depth 10 -Compress
 
             [void] (Invoke-RestMethod @RestMethod -Method Put -Uri $Uri -Body $Body)
         }
         else {
-            # for the dryrun, we dump the body in the verbose logging
+            # For the dryrun, we dump the body in the verbose logging
             Write-Verbose -Verbose (
                 $Template | ConvertTo-Json -Depth 10
             )
@@ -174,7 +175,7 @@ try{
     }
 
     $AuditLogs.Add([PSCustomObject]@{
-        Action = "UpdateAccount"
+        Action  = "UpdateAccount"
         Message = "Updated fields of account with id $($aRef.Medewerker)"
         IsError = $false
     })
@@ -182,8 +183,8 @@ try{
     $Success = $true
 }
 catch {
-    $auditLogs.Add([PSCustomObject]@{
-        Action = "UpdateAccount"
+    $AuditLogs.Add([PSCustomObject]@{
+        Action  = "UpdateAccount"
         Message = "Error updating fields of account with Id $($aRef.Medewerker): $($_)"
         IsError = $True
     })
@@ -191,12 +192,12 @@ catch {
 }
 
 # Send results
-$result = [PSCustomObject]@{
-    Success = $success
+$Result = [PSCustomObject]@{
+    Success = $Success
     AccountReference = $aRef
-    AuditLogs = $auditLogs
-    Account = $account
-    PreviousAccount = $previousAccount
+    AuditLogs = $AuditLogs
+    Account = $Account
+    PreviousAccount = $PreviousAccount
 
     # Optionally return data for use in other systems
     ExportData = [PSCustomObject]@{
@@ -207,4 +208,4 @@ $result = [PSCustomObject]@{
     }
 }
 
-Write-Output $result | ConvertTo-Json -Depth 10
+Write-Output $Result | ConvertTo-Json -Depth 10

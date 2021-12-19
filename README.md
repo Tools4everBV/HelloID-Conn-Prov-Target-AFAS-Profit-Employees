@@ -11,6 +11,7 @@
   * [Target](#target)
   * [Mappings](#mappings)
   * [Scope](#scope)
+  * [Upgrade](#upgrade)
 * [Setup the PowerShell connector](#setup-the-powershell-connector)
 
 
@@ -68,6 +69,21 @@ In addition to use to the above get-connector, the connector also uses the follo
 ![image](./assets/config.png)
 
 _For more information about our HelloID PowerShell connectors, please refer to our general [Documentation](https://docs.helloid.com/hc/en-us/articles/360012558020-How-to-configure-a-custom-PowerShell-target-connector) page_
+
+## upgrade
+If you upgrade the script from a previous version, there is a chance that your reference is a string. For reasons this is changed to an object. To accomodate a smooth transaction, the `$aRef = $AccountReference | ConvertFrom-Json` in the 'update' and 'delete' scripts can be replaced with the snippit below. 
+
+```powershell
+if ($AccountReference | Test-Json -ErrorAction 'SilentlyContinue') {
+    $aRef = $AccountReference | ConvertFrom-Json
+}
+else {
+    $aRef = [PSCustomObject]@{
+        Medewerker = $AccountReference
+        Persoonsnummer = $AccountReference
+    }
+}
+```
 
 # HelloID Docs
 The official HelloID documentation can be found at: https://docs.helloid.com/
