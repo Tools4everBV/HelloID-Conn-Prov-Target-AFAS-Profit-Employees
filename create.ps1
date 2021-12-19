@@ -28,7 +28,7 @@ $FilterValue = $p.externalId # Has to match the AFAS value of the specified filt
     [Net.SecurityProtocolType]::Tls12
 )
 
-# The new account variables 
+# The new account variables
 $Account = @{
     # E-Mail toegang - Check with AFAS Administrator if this needs to be set
     'EmailPortal' = $p.Accounts.MicrosoftActiveDirectory.userPrincipalName

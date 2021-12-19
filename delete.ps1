@@ -28,7 +28,7 @@ $FilterValue = $aRef.$FilterfieldName # Has to match the AFAS value of the speci
     [Net.SecurityProtocolType]::Tls12
 )
 
-# The new account variables 
+# The new account variables
 $Account = @{
     # E-Mail toegang - Check with AFAS Administrator if this needs to be set
     'EmailPortal' = "$($aRef.Persoonsnummer)@domain.com" # Unique value based of PersonId because at the revoke action we want to clear the unique fields
