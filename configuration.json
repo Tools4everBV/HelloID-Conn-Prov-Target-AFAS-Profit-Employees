@@ -5,7 +5,7 @@
     "defaultValue": "",
     "templateOptions": {
       "label": "Base Uri",
-      "placeholder": "https://12345.rest.afas.online/profitrestservices",
+      "placeholder": "https://*****.rest.afas.online/profitrestservices",
       "required": true
     }
   },
@@ -16,7 +16,7 @@
     "templateOptions": {
       "label": "Token in XML format",
       "type": "password",
-      "placeholder": "<token><version>1</version><data>D5R324DD5F4TRD945E530ED3CDD70D94BBDEC4C732B43F285ECB12345678</data></token>",
+      "placeholder": "<token><version>1</version><data>************************************************************</data></token>",
       "description": "",
       "required": true
     }

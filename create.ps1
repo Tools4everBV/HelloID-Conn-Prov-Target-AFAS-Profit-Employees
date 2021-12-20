@@ -2,7 +2,7 @@
 $Config = $Configuration | ConvertFrom-Json
 
 $BaseUri = $Config.BaseUri.TrimEnd('/')
-$Token   = $Config.Token
+$Token = $Config.Token
 
 $GetConnector = "T4E_HelloID_Users"
 $UpdateConnector = "KnEmployee"
@@ -32,8 +32,8 @@ $FilterValue = $p.externalId # Has to match the AFAS value of the specified filt
 $Account = @{
     # E-Mail toegang - Check with AFAS Administrator if this needs to be set
     'EmailPortal' = $p.Accounts.MicrosoftActiveDirectory.userPrincipalName
-    
-    # E-Mail werk  
+
+    # E-Mail werk
     'EmAd' = $p.Accounts.MicrosoftActiveDirectory.mail
 
     # phone.business.fixed
@@ -61,8 +61,8 @@ try {
 
     $AFASEmployee = Invoke-RestMethod @RestMethod -Method Get -Uri $Uri -Body @{
         filterfieldids = $FilterfieldName
-        filtervalues = $FilterValue
-        operatortypes = 1
+        filtervalues   = $FilterValue
+        operatortypes  = 1
     } | Select-Object -ExpandProperty 'rows'
 
     # Validating that we only get one user
@@ -78,7 +78,7 @@ try {
     $PreviousAccount = @{
         # E-Mail toegang
         'EmailPortal' = $AFASEmployee.Email_werk_gebruiker
-        # E-Mail werk  
+        # E-Mail werk
         'EmAd' = $AFASEmployee.Email_werk
         # phone.business.fixed
         'TeNr' = $AFASEmployee.Telefoonnr_werk
@@ -197,7 +197,7 @@ $Result = [PSCustomObject]@{
     AccountReference = $aRef
     AuditLogs = $AuditLogs
     Account = $Account
-    PreviousAccount = $PreviousAccount  
+    PreviousAccount = $PreviousAccount
 
     # Optionally return data for use in other systems
     ExportData = [PSCustomObject]@{

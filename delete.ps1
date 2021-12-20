@@ -2,7 +2,7 @@
 $Config = $Configuration | ConvertFrom-Json
 
 $BaseUri = $Config.BaseUri.TrimEnd('/')
-$Token   = $Config.Token
+$Token = $Config.Token
 
 $GetConnector = "T4E_HelloID_Users"
 $UpdateConnector = "KnEmployee"
@@ -33,7 +33,7 @@ $Account = @{
     # E-Mail toegang - Check with AFAS Administrator if this needs to be set
     'EmailPortal' = "$($aRef.Persoonsnummer)@domain.com" # Unique value based of PersonId because at the revoke action we want to clear the unique fields
 
-    # E-Mail werk  
+    # E-Mail werk
     'EmAd' = "$($aRef.Persoonsnummer)@domain.com" # Unique value based of PersonId because at the revoke action we want to clear the unique fields
 
     # phone.business.fixed
@@ -61,8 +61,8 @@ try {
 
     $AFASEmployee = Invoke-RestMethod @RestMethod -Method Get -Uri $Uri -Body @{
         filterfieldids = $FilterfieldName
-        filtervalues = $FilterValue
-        operatortypes = 1
+        filtervalues   = $FilterValue
+        operatortypes  = 1
     } | Select-Object -ExpandProperty 'rows'
 
     # Validating that we only get one user
@@ -78,7 +78,7 @@ try {
     $PreviousAccount = @{
         # E-Mail toegang
         'EmailPortal' = $AFASEmployee.Email_werk_gebruiker
-        # E-Mail werk  
+        # E-Mail werk
         'EmAd' = $AFASEmployee.Email_werk
         # phone.business.fixed
         'TeNr' = $AFASEmployee.Telefoonnr_werk
@@ -197,7 +197,7 @@ $Result = [PSCustomObject]@{
     AccountReference = $aRef
     AuditLogs = $AuditLogs
     Account = $Account
-    PreviousAccount = $PreviousAccount  
+    PreviousAccount = $PreviousAccount
 }
 
 Write-Output $Result | ConvertTo-Json -Depth 10
