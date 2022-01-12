@@ -34,7 +34,7 @@ $Account = @{
     'EmailPortal' = $p.Accounts.MicrosoftActiveDirectory.userPrincipalName
 
     # E-Mail werk
-    'EmAd' = $p.Accounts.MicrosoftActiveDirectory.mail
+    'EmAd'        = $p.Accounts.MicrosoftActiveDirectory.mail
 
     # phone.business.fixed
     # 'TeNr' = $p.Accounts.MicrosoftActiveDirectory.telephoneNumber
@@ -50,8 +50,8 @@ try {
 
     $RestMethod = @{
         UseBasicParsing = $True
-        ContentType = "application/json;charset=utf-8"
-        Headers = @{
+        ContentType     = "application/json;charset=utf-8"
+        Headers         = @{
             Authorization = "AfasToken $($EncodedToken)"
         }
     }
@@ -59,7 +59,7 @@ try {
     # Fetch Employee from AFAS
     $Uri = "$($BaseUri)/connectors/$($GetConnector)"
 
-    $AFASEmployee = Invoke-RestMethod @RestMethod -Method Get -Uri $Uri -Body @{
+    $AFASEmployee = Invoke-RestMethod @RestMethod -Method 'Get' -Uri $Uri -Body @{
         filterfieldids = $FilterfieldName
         filtervalues   = $FilterValue
         operatortypes  = 1
@@ -79,15 +79,15 @@ try {
         # E-Mail toegang
         'EmailPortal' = $AFASEmployee.Email_werk_gebruiker
         # E-Mail werk
-        'EmAd' = $AFASEmployee.Email_werk
+        'EmAd'        = $AFASEmployee.Email_werk
         # phone.business.fixed
-        'TeNr' = $AFASEmployee.Telefoonnr_werk
+        'TeNr'        = $AFASEmployee.Telefoonnr_werk
         # phone.business.mobile
-        'MbNr' = $AFASEmployee.Mobielnr_werk
+        'MbNr'        = $AFASEmployee.Mobielnr_werk
         # Zoeknaam
-        'SeNm' = ''
+        'SeNm'        = ''
         # Fax werk
-        'FaNr' = ''
+        'FaNr'        = ''
     }
 
     # Fill the UpdatedFields with all changed values
@@ -133,17 +133,17 @@ try {
             # Zoek op BcCo (Persoons-ID)
             'MatchPer' = 0
             # Persoons-ID
-            'BcCo' = $AFASEmployee.Persoonsnummer
+            'BcCo'     = $AFASEmployee.Persoonsnummer
         }
 
         # set the updated properties
         $Fields | Add-Member -NotePropertyMembers $UpdatedFields
 
-        if (-Not ($dryRun -eq $True)) {
+        if (-Not ($DryRun -eq $True)) {
             $Uri = "$($BaseUri)/connectors/$($UpdateConnector)"
             $Body = $Template | ConvertTo-Json -Depth 10 -Compress
 
-            [void] (Invoke-RestMethod @RestMethod -Method Put -Uri $Uri -Body $Body)
+            [void] (Invoke-RestMethod @RestMethod -Method 'Put' -Uri $Uri -Body $Body)
         }
         else {
             # For the dryrun, we dump the body in the verbose logging
@@ -159,52 +159,52 @@ try {
     }
 
     $PreviousAccount | Add-Member -NotePropertyMembers @{
-        Medewerker = $AFASEmployee.Medewerker
+        Medewerker     = $AFASEmployee.Medewerker
         Persoonsnummer = $AFASEmployee.Persoonsnummer
     }
 
     $Account | Add-Member -NotePropertyMembers @{
-        Medewerker = $AFASEmployee.Medewerker
+        Medewerker     = $AFASEmployee.Medewerker
         Persoonsnummer = $AFASEmployee.Persoonsnummer
     }
 
     # Set aRef object for use in futher actions
     $aRef = [PSCustomObject]@{
-        Medewerker = $AFASEmployee.Medewerker
+        Medewerker     = $AFASEmployee.Medewerker
         Persoonsnummer = $AFASEmployee.Persoonsnummer
     }
 
     $AuditLogs.Add([PSCustomObject]@{
-        Action  = "CreateAccount"
-        Message = "Correlated to and updated fields of account with id $($aRef.Medewerker)"
-        IsError = $false
-    })
+            Action  = "CreateAccount"
+            Message = "Correlated to and updated fields of account with id $($aRef.Medewerker)"
+            IsError = $false
+        })
 
     $Success = $true
 }
 catch {
     $AuditLogs.Add([PSCustomObject]@{
-        Action  = "CreateAccount"
-        Message = "Error correlating and updating fields of account with Id $($aRef.Medewerker): $($_)"
-        IsError = $True
-    })
+            Action  = "CreateAccount"
+            Message = "Error correlating and updating fields of account with Id $($aRef.Medewerker): $($_)"
+            IsError = $True
+        })
     Write-Error $_
 }
 
 # Send results
 $Result = [PSCustomObject]@{
-    Success = $Success
+    Success          = $Success
     AccountReference = $aRef
-    AuditLogs = $AuditLogs
-    Account = $Account
-    PreviousAccount = $PreviousAccount
+    AuditLogs        = $AuditLogs
+    Account          = $Account
+    PreviousAccount  = $PreviousAccount
 
     # Optionally return data for use in other systems
-    ExportData = [PSCustomObject]@{
-        Medewerker = $aRef.Medewerker
-        Persoonsnummer = $aRef.Persoonsnummer
+    ExportData       = [PSCustomObject]@{
+        Medewerker           = $aRef.Medewerker
+        Persoonsnummer       = $aRef.Persoonsnummer
         BusinessEmailAddress = $Account.EmAd
-        PortalEmailAddress = $Account.EmailPortal
+        PortalEmailAddress   = $Account.EmailPortal
     }
 }
 

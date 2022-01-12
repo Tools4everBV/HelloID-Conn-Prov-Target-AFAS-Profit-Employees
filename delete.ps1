@@ -31,10 +31,10 @@ $FilterValue = $aRef.$FilterfieldName # Has to match the AFAS value of the speci
 # The new account variables
 $Account = @{
     # E-Mail toegang - Check with AFAS Administrator if this needs to be set
-    'EmailPortal' = "$($aRef.Persoonsnummer)@domain.com" # Unique value based of PersonId because at the revoke action we want to clear the unique fields
+    'EmailPortal' = "$($aRef.$FilterfieldName)@domain.com" # Unique value based of PersonId because at the revoke action we want to clear the unique fields
 
     # E-Mail werk
-    'EmAd' = "$($aRef.Persoonsnummer)@domain.com" # Unique value based of PersonId because at the revoke action we want to clear the unique fields
+    'EmAd'        = "$($aRef.$FilterfieldName)@domain.com" # Unique value based of PersonId because at the revoke action we want to clear the unique fields
 
     # phone.business.fixed
     # 'TeNr' = $p.Accounts.MicrosoftActiveDirectory.telephoneNumber
@@ -50,8 +50,8 @@ try {
 
     $RestMethod = @{
         UseBasicParsing = $True
-        ContentType = "application/json;charset=utf-8"
-        Headers = @{
+        ContentType     = "application/json;charset=utf-8"
+        Headers         = @{
             Authorization = "AfasToken $($EncodedToken)"
         }
     }
@@ -59,7 +59,7 @@ try {
     # Fetch Employee from AFAS
     $Uri = "$($BaseUri)/connectors/$($GetConnector)"
 
-    $AFASEmployee = Invoke-RestMethod @RestMethod -Method Get -Uri $Uri -Body @{
+    $AFASEmployee = Invoke-RestMethod @RestMethod -Method 'Get' -Uri $Uri -Body @{
         filterfieldids = $FilterfieldName
         filtervalues   = $FilterValue
         operatortypes  = 1
@@ -79,15 +79,15 @@ try {
         # E-Mail toegang
         'EmailPortal' = $AFASEmployee.Email_werk_gebruiker
         # E-Mail werk
-        'EmAd' = $AFASEmployee.Email_werk
+        'EmAd'        = $AFASEmployee.Email_werk
         # phone.business.fixed
-        'TeNr' = $AFASEmployee.Telefoonnr_werk
+        'TeNr'        = $AFASEmployee.Telefoonnr_werk
         # phone.business.mobile
-        'MbNr' = $AFASEmployee.Mobielnr_werk
+        'MbNr'        = $AFASEmployee.Mobielnr_werk
         # Zoeknaam
-        'SeNm' = ''
+        'SeNm'        = ''
         # Fax werk
-        'FaNr' = ''
+        'FaNr'        = ''
     }
 
     # Fill the UpdatedFields with all changed values
@@ -133,17 +133,17 @@ try {
             # Zoek op BcCo (Persoons-ID)
             'MatchPer' = 0
             # Persoons-ID
-            'BcCo' = $AFASEmployee.Persoonsnummer
+            'BcCo'     = $AFASEmployee.Persoonsnummer
         }
 
         # set the updated properties
         $Fields | Add-Member -NotePropertyMembers $UpdatedFields
 
-        if (-Not ($dryRun -eq $True)) {
+        if (-Not ($DryRun -eq $True)) {
             $Uri = "$($BaseUri)/connectors/$($UpdateConnector)"
             $Body = $Template | ConvertTo-Json -Depth 10 -Compress
 
-            [void] (Invoke-RestMethod @RestMethod -Method Put -Uri $Uri -Body $Body)
+            [void] (Invoke-RestMethod @RestMethod -Method 'Put' -Uri $Uri -Body $Body)
         }
         else {
             # For the dryrun, we dump the body in the verbose logging
@@ -159,45 +159,45 @@ try {
     }
 
     $PreviousAccount | Add-Member -NotePropertyMembers @{
-        Medewerker = $aRef.Medewerker
+        Medewerker     = $aRef.Medewerker
         Persoonsnummer = $aRef.Persoonsnummer
     }
 
     $Account | Add-Member -NotePropertyMembers @{
-        Medewerker = $AFASEmployee.Medewerker
+        Medewerker     = $AFASEmployee.Medewerker
         Persoonsnummer = $AFASEmployee.Persoonsnummer
     }
 
     # Set aRef object for use in futher actions
     $aRef = [PSCustomObject]@{
-        Medewerker = $AFASEmployee.Medewerker
+        Medewerker     = $AFASEmployee.Medewerker
         Persoonsnummer = $AFASEmployee.Persoonsnummer
     }
 
     $AuditLogs.Add([PSCustomObject]@{
-        Action  = "DeleteAccount"
-        Message = "Deleted link and updated fields of account with id $($aRef.Medewerker)"
-        IsError = $false
-    })
+            Action  = "DeleteAccount"
+            Message = "Deleted link and updated fields of account with id $($aRef.Medewerker)"
+            IsError = $false
+        })
 
     $Success = $true
 }
 catch {
     $AuditLogs.Add([PSCustomObject]@{
-        Action  = "DeleteAccount"
-        Message = "Error deleting link and updating fields of account with Id $($aRef.Medewerker): $($_)"
-        IsError = $True
-    })
+            Action  = "DeleteAccount"
+            Message = "Error deleting link and updating fields of account with Id $($aRef.Medewerker): $($_)"
+            IsError = $True
+        })
     Write-Warning $_
 }
 
 # Send results
 $Result = [PSCustomObject]@{
-    Success = $Success
+    Success          = $Success
     AccountReference = $aRef
-    AuditLogs = $AuditLogs
-    Account = $Account
-    PreviousAccount = $PreviousAccount
+    AuditLogs        = $AuditLogs
+    Account          = $Account
+    PreviousAccount  = $PreviousAccount
 }
 
 Write-Output $Result | ConvertTo-Json -Depth 10
