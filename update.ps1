@@ -11,7 +11,7 @@ $m = $manager | ConvertFrom-Json;
 $aRef = $accountReference | ConvertFrom-Json;
 $mRef = $managerAccountReference | ConvertFrom-Json;
 $success = $False;
-$auditLogs = New-Object Collections.Generic.List[PSCustomObject];
+$auditLogs = [collections.Generic.List[PSCustomObject]]::new();
 
 # Set TLS to accept TLS, TLS 1.1 and TLS 1.2
 [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls -bor [Net.SecurityProtocolType]::Tls11 -bor [Net.SecurityProtocolType]::Tls12
