@@ -117,7 +117,7 @@ try{
             Action = "CreateAccount"
             Message = "Correlated to and updated fields of account with id $($aRef.Medewerker)"
             IsError = $false
-        });
+        })
 
         $success = $true;       
     }
@@ -126,7 +126,7 @@ try{
         Action = "CreateAccount"
         Message = "Error correlating and updating fields of account with Id $($aRef.Medewerker): $($_)"
         IsError = $True
-    });
+    })
     Write-Warning $_
 }
 

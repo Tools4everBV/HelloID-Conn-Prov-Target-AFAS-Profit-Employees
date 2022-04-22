@@ -6,10 +6,7 @@ $getConnector = "T4E_HelloID_Users"
 $updateConnector = "KnEmployee"
 
 #Initialize default properties
-$p = $person | ConvertFrom-Json;
-$m = $manager | ConvertFrom-Json;
-$aRef = $accountReference | ConvertFrom-Json;
-$mRef = $managerAccountReference | ConvertFrom-Json;
+$aRef = $accountReference | ConvertFrom-Json
 $success = $false
 $auditLogs = [collections.Generic.List[PSCustomObject]]::new()
 
@@ -17,11 +14,11 @@ $auditLogs = [collections.Generic.List[PSCustomObject]]::new()
 [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls -bor [Net.SecurityProtocolType]::Tls11 -bor [Net.SecurityProtocolType]::Tls12
 
 $filterfieldid = "Persoonsnummer"
-$filtervalue = $aRef.Persoonsnummer; # Has to match the AFAS value of the specified filter field ($filterfieldid)
-$emailaddress = "$($aRef.Persoonsnummer)@domain.com"; # Unique value based of PersonId because at the revoke action we want to clear the unique fields
-$userPrincipalName = "$($aRef.Persoonsnummer)@domain.com"; # Unique value based of PersonId because at the revoke action we want to clear the unique fields
-# $telephoneNumber = $p.Accounts.MicrosoftActiveDirectory.telephoneNumber;
-# $mobile = $p.Accounts.MicrosoftActiveDirectory.mobile;
+$filtervalue = $aRef.Persoonsnummer # Has to match the AFAS value of the specified filter field ($filterfieldid)
+$emailaddress = $null #"$($aRef.Persoonsnummer)@domain.com" # Unique value based of PersonId because at the revoke action we want to clear the unique fields
+$userPrincipalName = $null #"$($aRef.Persoonsnummer)@domain.com" # Unique value based of PersonId because at the revoke action we want to clear the unique fields
+# $telephoneNumber = $p.Accounts.MicrosoftActiveDirectory.telephoneNumber
+# $mobile = $p.Accounts.MicrosoftActiveDirectory.mobile
 
 try{
     $encodedToken = [System.Convert]::ToBase64String([System.Text.Encoding]::ASCII.GetBytes($Token))
@@ -60,7 +57,7 @@ try{
         $account = [PSCustomObject]@{
             'AfasEmployee' = @{
                 'Element' = @{
-                    '@EmId' = $getResponse.rows.Medewerker;
+                    '@EmId' = $getResponse.rows.Medewerker
                     'Objects' = @(@{
                         'KnPerson' = @{
                             'Element' = @{
