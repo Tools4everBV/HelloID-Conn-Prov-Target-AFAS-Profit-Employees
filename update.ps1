@@ -6,10 +6,8 @@ $getConnector = "T4E_HelloID_Users"
 $updateConnector = "KnEmployee"
 
 #Initialize default properties
-$p = $person | ConvertFrom-Json;
-$m = $manager | ConvertFrom-Json;
-$aRef = $accountReference | ConvertFrom-Json;
-$mRef = $managerAccountReference | ConvertFrom-Json;
+$p = $person | ConvertFrom-Json
+$aRef = $accountReference | ConvertFrom-Json
 $success = $False;
 $auditLogs = [collections.Generic.List[PSCustomObject]]::new();
 
@@ -17,11 +15,11 @@ $auditLogs = [collections.Generic.List[PSCustomObject]]::new();
 [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls -bor [Net.SecurityProtocolType]::Tls11 -bor [Net.SecurityProtocolType]::Tls12
 
 $filterfieldid = "Persoonsnummer"
-$filtervalue = $aRef.Persoonsnummer; # Has to match the AFAS value of the specified filter field ($filterfieldid)
-$emailaddress = $p.Accounts.MicrosoftActiveDirectory.mail;
-$userPrincipalName = $p.Accounts.MicrosoftActiveDirectory.userPrincipalName;
-# $telephoneNumber = $p.Accounts.MicrosoftActiveDirectory.telephoneNumber;
-# $mobile = $p.Accounts.MicrosoftActiveDirectory.mobile;
+$filtervalue = $aRef.Persoonsnummer # Has to match the AFAS value of the specified filter field ($filterfieldid)
+$emailaddress = $p.Accounts.MicrosoftActiveDirectory.mail
+$userPrincipalName = $p.Accounts.MicrosoftActiveDirectory.userPrincipalName
+# $telephoneNumber = $p.Accounts.MicrosoftActiveDirectory.telephoneNumber
+# $mobile = $p.Accounts.MicrosoftActiveDirectory.mobile
 
 $EmAdUpdated = $false
 $EmailPortalUpdated = $false
@@ -44,12 +42,13 @@ try{
                                 'Element' = @{
                                     'Fields' = @{
                                         # E-Mail werk  
-                                        'EmAd' = $getResponse.rows.Email_werk;
+                                        'EmAd' = $getResponse.rows.Email_werk
                                   
                                         # phone.business.fixed
-                                        'TeNr' = $getResponse.rows.Telefoonnr_werk;
+                                        'TeNr' = $getResponse.rows.Telefoonnr_werk
+
                                         # phone.business.mobile
-                                        'MbNr' = $getResponse.rows.Mobielnr_werk;  
+                                        'MbNr' = $getResponse.rows.Mobielnr_werk
                                     }
                                 }
                             }
@@ -62,15 +61,15 @@ try{
         $account = [PSCustomObject]@{
             'AfasEmployee' = @{
                 'Element' = @{
-                    '@EmId' = $getResponse.rows.Medewerker;
+                    '@EmId' = $getResponse.rows.Medewerker
                     'Objects' = @(@{
                         'KnPerson' = @{
                             'Element' = @{
                                 'Fields' = @{
                                     # Zoek op BcCo (Persoons-ID)
-                                    'MatchPer' = 0;
+                                    'MatchPer' = 0
                                     # Nummer
-                                    'BcCo' = $getResponse.rows.Persoonsnummer;
+                                    'BcCo' = $getResponse.rows.Persoonsnummer
 
                                     # E-Mail toegang - Check with AFAS Administrator if this needs to be set
                                     # 'EmailPortal' = $userPrincipalName;
@@ -110,33 +109,33 @@ try{
             $body = $account | ConvertTo-Json -Depth 10
 
             $putUri = $BaseUri + "/connectors/" + $updateConnector
-            $putResponse = Invoke-RestMethod -Method Put -Uri $putUri -Body $body -ContentType "application/json;charset=utf-8" -Headers $Headers -UseBasicParsing
+            $null = Invoke-RestMethod -Method Put -Uri $putUri -Body $body -ContentType "application/json;charset=utf-8" -Headers $Headers -UseBasicParsing
         }
 
         $auditLogs.Add([PSCustomObject]@{
             Action = "UpdateAccount"
             Message = "Updated fields of account with id $($aRef.Medewerker)"
-            IsError = $false;
+            IsError = $false
         });
 
-        $success = $true;     
+        $success = $true  
     }
 }catch{
     $auditLogs.Add([PSCustomObject]@{
         Action = "UpdateAccount"
         Message = "Error updating fields of account with Id $($aRef.Medewerker): $($_)"
-        IsError = $True
+        IsError = $true
     });
-	Write-Warning $_;
+	Write-Warning $_
 }
 
 # Send results
 $result = [PSCustomObject]@{
-	Success= $success;
-	AccountReference= $aRef;
-	AuditLogs = $auditLogs;
-    Account = $account;
-    PreviousAccount = $previousAccount;    
+	Success= $success
+	AccountReference= $aRef
+	AuditLogs = $auditLogs
+    Account = $account
+    PreviousAccount = $previousAccount
 
     # Optionally return data for use in other systems
     ExportData       = [PSCustomObject]@{
@@ -152,4 +151,4 @@ if($EmAdUpdated -eq $true){
 if($EmailPortalUpdated -eq $true){
     $result.ExportData | Add-Member -MemberType NoteProperty -Name PortalEmailAddress -Value $($account.AfasEmployee.Element.Objects[0].KnPerson.Element.Fields.EmailPortal) -Force
 }
-Write-Output $result | ConvertTo-Json -Depth 10;
+Write-Output $result | ConvertTo-Json -Depth 10

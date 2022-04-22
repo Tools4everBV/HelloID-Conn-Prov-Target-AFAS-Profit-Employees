@@ -10,8 +10,8 @@ $p = $person | ConvertFrom-Json;
 $m = $manager | ConvertFrom-Json;
 $aRef = $accountReference | ConvertFrom-Json;
 $mRef = $managerAccountReference | ConvertFrom-Json;
-$success = $False;
-$auditLogs = [collections.Generic.List[PSCustomObject]]::new();
+$success = $false
+$auditLogs = [collections.Generic.List[PSCustomObject]]::new()
 
 # Set TLS to accept TLS, TLS 1.1 and TLS 1.2
 [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls -bor [Net.SecurityProtocolType]::Tls11 -bor [Net.SecurityProtocolType]::Tls12
@@ -34,25 +34,26 @@ try{
         # Retrieve current account data for properties to be updated
         $previousAccount = [PSCustomObject]@{
             'AfasEmployee' = @{
-                    'Element' = @{
-                        '@EmId' = $getResponse.rows.Medewerker;
-                        'Objects' = @(@{
-                            'KnPerson' = @{
-                                'Element' = @{
-                                    'Fields' = @{
-                                        # E-Mail werk  
-                                        'EmAd' = $getResponse.rows.Email_werk;
-                                  
-                                        # phone.business.fixed
-                                        'TeNr' = $getResponse.rows.Telefoonnr_werk;
-                                        # phone.business.mobile
-                                        'MbNr' = $getResponse.rows.Mobielnr_werk;  
-                                    }
+                'Element' = @{
+                    '@EmId' = $getResponse.rows.Medewerker
+                    'Objects' = @(@{
+                        'KnPerson' = @{
+                            'Element' = @{
+                                'Fields' = @{
+                                    # E-Mail werk  
+                                    'EmAd' = $getResponse.rows.Email_werk
+                                
+                                    # phone.business.fixed
+                                    'TeNr' = $getResponse.rows.Telefoonnr_werk
+                                    
+                                    # phone.business.mobile
+                                    'MbNr' = $getResponse.rows.Mobielnr_werk 
                                 }
                             }
-                        })
-                    }
+                        }
+                    })
                 }
+            }
         }
 
         # Map the properties to update
@@ -65,18 +66,18 @@ try{
                             'Element' = @{
                                 'Fields' = @{
                                     # Zoek op BcCo (Persoons-ID)
-                                    'MatchPer' = 0;
+                                    'MatchPer' = 0
                                     # Nummer
-                                    'BcCo' = $getResponse.rows.Persoonsnummer;
+                                    'BcCo' = $getResponse.rows.Persoonsnummer
 
                                     # E-Mail toegang - Check with AFAS Administrator if this needs to be set
-                                    # 'EmailPortal' = $userPrincipalName;
+                                    # 'EmailPortal' = $userPrincipalName
 
                                     <#
                                     # phone.business.fixed
-                                    'TeNr' = $telephoneNumber;
+                                    'TeNr' = $telephoneNumber
                                     # phone.business.mobile
-                                    'MbNr' = $mobile;
+                                    'MbNr' = $mobile
                                     #>    
                                 }
                             }
@@ -97,14 +98,14 @@ try{
             $body = $account | ConvertTo-Json -Depth 10
 
             $putUri = $BaseUri + "/connectors/" + $updateConnector
-            $putResponse = Invoke-RestMethod -Method Put -Uri $putUri -Body $body -ContentType "application/json;charset=utf-8" -Headers $Headers -UseBasicParsing
+            $null = Invoke-RestMethod -Method Put -Uri $putUri -Body $body -ContentType "application/json;charset=utf-8" -Headers $Headers -UseBasicParsing
         }
 
         $auditLogs.Add([PSCustomObject]@{
             Action = "DeleteAccount"
             Message = "Deleted link and updated fields of account with id $($aRef.Medewerker)"
-            IsError = $false;
-        });
+            IsError = $false
+        })
 
         $success = $true;       
     }
@@ -113,15 +114,17 @@ try{
         Action = "DeleteAccount"
         Message = "Error deleting link and updating fields of account with Id $($aRef.Medewerker): $($_)"
         IsError = $True
-    });
-    Write-Warning $_;
+    })
+    Write-Warning $_
 }
 
 # Send results
 $result = [PSCustomObject]@{
-	Success= $success;
-	AccountReference= $aRef;
-	AuditLogs = $auditLogs;
-    Account = $account;
-};
-Write-Output $result | ConvertTo-Json -Depth 10;
+	Success = $success
+	AccountReference = $aRef
+	AuditLogs = $auditLogs
+    Account = $account
+    PreviousAccount = $previousAccount    
+}
+
+Write-Output $result | ConvertTo-Json -Depth 10
