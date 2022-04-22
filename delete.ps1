@@ -104,7 +104,7 @@ try{
             IsError = $false
         })
 
-        $success = $true;       
+        $success = $true
     }
 }catch{
     $auditLogs.Add([PSCustomObject]@{

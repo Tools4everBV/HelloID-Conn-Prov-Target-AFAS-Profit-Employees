@@ -15,7 +15,7 @@ $auditLogs = [collections.Generic.List[PSCustomObject]]::new()
 [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls -bor [Net.SecurityProtocolType]::Tls11 -bor [Net.SecurityProtocolType]::Tls12
 
 $filterfieldid = "Persoonsnummer"
-$filtervalue = $p.externalId; # Has to match the AFAS value of the specified filter field ($filterfieldid)
+$filtervalue = $p.externalId # Has to match the AFAS value of the specified filter field ($filterfieldid)
 $emailaddress = $p.Accounts.MicrosoftActiveDirectory.mail
 $userPrincipalName = $p.Accounts.MicrosoftActiveDirectory.userPrincipalName
 # $telephoneNumber = $p.Accounts.MicrosoftActiveDirectory.telephoneNumber
@@ -61,7 +61,7 @@ try{
         $account = [PSCustomObject]@{
             'AfasEmployee' = @{
                 'Element' = @{
-                    '@EmId' = $getResponse.rows.Medewerker;
+                    '@EmId' = $getResponse.rows.Medewerker
                     'Objects' = @(@{
                         'KnPerson' = @{
                             'Element' = @{
@@ -72,7 +72,7 @@ try{
                                     'BcCo' = $getResponse.rows.Persoonsnummer
 
                                     # E-Mail toegang - Check with AFAS Administrator if this needs to be set
-                                    # 'EmailPortal' = $userPrincipalName;
+                                    # 'EmailPortal' = $userPrincipalName
 
                                     <#
                                     # phone.business.fixed
@@ -119,7 +119,7 @@ try{
             IsError = $false
         })
 
-        $success = $true;       
+        $success = $true
     }
 }catch{
     $auditLogs.Add([PSCustomObject]@{
@@ -142,8 +142,8 @@ $result = [PSCustomObject]@{
     ExportData       = [PSCustomObject]@{
         Medewerker      = $aRef.Medewerker
         Persoonsnummer  = $aRef.Persoonsnummer      
-    };    
-};
+    }
+}
 
 # Only add the data to ExportData if it has actually been updated, since we want to store the data HelloID has sent
 if($EmAdUpdated -eq $true){

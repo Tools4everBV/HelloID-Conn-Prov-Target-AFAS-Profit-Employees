@@ -8,8 +8,8 @@ $updateConnector = "KnEmployee"
 #Initialize default properties
 $p = $person | ConvertFrom-Json
 $aRef = $accountReference | ConvertFrom-Json
-$success = $False;
-$auditLogs = [collections.Generic.List[PSCustomObject]]::new();
+$success = $false
+$auditLogs = [collections.Generic.List[PSCustomObject]]::new()
 
 # Set TLS to accept TLS, TLS 1.1 and TLS 1.2
 [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls -bor [Net.SecurityProtocolType]::Tls11 -bor [Net.SecurityProtocolType]::Tls12
@@ -36,7 +36,7 @@ try{
         $previousAccount = [PSCustomObject]@{
             'AfasEmployee' = @{
                     'Element' = @{
-                        '@EmId' = $getResponse.rows.Medewerker;
+                        '@EmId' = $getResponse.rows.Medewerker
                         'Objects' = @(@{
                             'KnPerson' = @{
                                 'Element' = @{
@@ -72,13 +72,13 @@ try{
                                     'BcCo' = $getResponse.rows.Persoonsnummer
 
                                     # E-Mail toegang - Check with AFAS Administrator if this needs to be set
-                                    # 'EmailPortal' = $userPrincipalName;
+                                    # 'EmailPortal' = $userPrincipalName
 
                                     <#
                                     # phone.business.fixed
-                                    'TeNr' = $telephoneNumber;
+                                    'TeNr' = $telephoneNumber
                                     # phone.business.mobile
-                                    'MbNr' = $mobile;
+                                    'MbNr' = $mobile
                                     #>    
                                 }
                             }
@@ -116,7 +116,7 @@ try{
             Action = "UpdateAccount"
             Message = "Updated fields of account with id $($aRef.Medewerker)"
             IsError = $false
-        });
+        })
 
         $success = $true  
     }
@@ -125,7 +125,7 @@ try{
         Action = "UpdateAccount"
         Message = "Error updating fields of account with Id $($aRef.Medewerker): $($_)"
         IsError = $true
-    });
+    })
 	Write-Warning $_
 }
 
@@ -141,8 +141,8 @@ $result = [PSCustomObject]@{
     ExportData       = [PSCustomObject]@{
         Medewerker      = $aRef.Medewerker
         Persoonsnummer  = $aRef.Persoonsnummer      
-    };    
-};
+    }
+}
 
 # Only add the data to ExportData if it has actually been updated, since we want to store the data HelloID has sent
 if($EmAdUpdated -eq $true){
