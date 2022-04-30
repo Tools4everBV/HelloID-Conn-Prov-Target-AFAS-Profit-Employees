@@ -1,8 +1,18 @@
-$config = ConvertFrom-Json $configuration
+# Set TLS to accept TLS, TLS 1.1 and TLS 1.2
+[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls -bor [Net.SecurityProtocolType]::Tls11 -bor [Net.SecurityProtocolType]::Tls12
 
-$BaseUri = $config.BaseUri
-$Token = $config.Token
-$getConnector = "T4E_HelloID_Users"
+$VerbosePreference = "SilentlyContinue"
+$InformationPreference = "Continue"
+$WarningPreference = "Continue"
+
+$c = $configuration | ConvertFrom-Json
+$p = $person | ConvertFrom-Json
+$success = $false
+$auditLogs = [Collections.Generic.List[PSCustomObject]]::new()
+
+$BaseUri = $c.BaseUri
+$Token = $c.Token
+$getConnector = "T4E_HelloID_Users_v2"
 $updateConnector = "KnEmployee"
 
 #Initialize default properties
@@ -11,11 +21,8 @@ $aRef = $accountReference | ConvertFrom-Json
 $success = $false
 $auditLogs = [collections.Generic.List[PSCustomObject]]::new()
 
-# Set TLS to accept TLS, TLS 1.1 and TLS 1.2
-[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls -bor [Net.SecurityProtocolType]::Tls11 -bor [Net.SecurityProtocolType]::Tls12
-
-$filterfieldid = "Persoonsnummer"
-$filtervalue = $p.externalId # Has to match the AFAS value of the specified filter field ($filterfieldid)
+$filterfieldid = "Medewerker"
+$filtervalue = $aRef.Medewerker # Has to match the AFAS value of the specified filter field ($filterfieldid)
 $emailaddress = $p.Accounts.MicrosoftActiveDirectory.mail
 $userPrincipalName = $p.Accounts.MicrosoftActiveDirectory.userPrincipalName
 # $telephoneNumber = $p.Accounts.MicrosoftActiveDirectory.telephoneNumber
@@ -71,9 +78,6 @@ try{
                                     # Nummer
                                     'BcCo' = $getResponse.rows.Persoonsnummer
 
-                                    # E-Mail toegang - Check with AFAS Administrator if this needs to be set
-                                    # 'EmailPortal' = $userPrincipalName
-
                                     <#
                                     # phone.business.fixed
                                     'TeNr' = $telephoneNumber
@@ -87,15 +91,21 @@ try{
                 }
             }
         }
-        # Set variable to indicate update of EmailPortal has occurred (for export data object)
-        # $EmailPortalUpdated = $true
+
+        # If '$userPrincipalName' does not match current 'EmailPortal', add 'EmailPortal' to update body. AFAS will throw an error when trying to update this with the same value
+        if( $getResponse.rows.Email_portal -ne $userPrincipalName -and -not[string]::IsNullOrEmpty($userPrincipalName) ){
+            # E-Mail toegang - Check with AFAS Administrator if this needs to be set
+            $account.'AfasEmployee'.'Element'.Objects[0].'KnPerson'.'Element'.'Fields' += @{'EmailPortal' = $userPrincipalName}
+            Write-Verbose -Verbose "Updating EmailPortal '$($getResponse.rows.Email_portal)' with new value '$userPrincipalName'"
+            # Set variable to indicate update of EmAd has occurred (for export data object)
+            $EmailPortalUpdated = $true
+        }
 
         # If '$emailAdddres' does not match current 'EmAd', add 'EmAd' to update body. AFAS will throw an error when trying to update this with the same value
         if( $getResponse.rows.Email_werk -ne $emailaddress -and -not[string]::IsNullOrEmpty($emailaddress) ){
             # E-mail werk
             $account.'AfasEmployee'.'Element'.Objects[0].'KnPerson'.'Element'.'Fields' += @{'EmAd' = $emailaddress}
             Write-Verbose -Verbose "Updating BusinessEmailAddress '$($getResponse.rows.Email_werk)' with new value '$emailaddress'"
-            
             # Set variable to indicate update of EmAd has occurred (for export data object)
             $EmAdUpdated = $true
         }   
