@@ -22,7 +22,7 @@ $success = $false
 $auditLogs = [collections.Generic.List[PSCustomObject]]::new()
 
 $filterfieldid = "Medewerker"
-$filtervalue = $aRef.Medewerker # Has to match the AFAS value of the specified filter field ($filterfieldid)
+$filtervalue = $p.ExternalId # Has to match the AFAS value of the specified filter field ($filterfieldid)
 $emailaddress = $p.Accounts.MicrosoftActiveDirectory.mail
 $userPrincipalName = $p.Accounts.MicrosoftActiveDirectory.userPrincipalName
 # $telephoneNumber = $p.Accounts.MicrosoftActiveDirectory.telephoneNumber
