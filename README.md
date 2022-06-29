@@ -47,18 +47,18 @@ Please see the following pages from the AFAS Knowledge Base for more information
 
 The following GetConnectors are required by HelloID when the system is defined as source system: 
 
-*	Tools4ever - HelloID - T4E_HelloID_Employments
-*	Tools4ever - HelloID - T4E_HelloID_Positions
-*	Tools4ever - HelloID - T4E_HelloID_Groups
-*	Tools4ever - HelloID - T4E_HelloID_OrganizationalUnits
-*	Tools4ever - HelloID - T4E_HelloID_Users
-*	Tools4ever - HelloID - T4E_HelloID_UserGroups
+*	Tools4ever - HelloID - T4E_HelloID_Employments_v2
+*	Tools4ever - HelloID - T4E_HelloID_Positions_v2
+*	Tools4ever - HelloID - T4E_HelloID_Groups_v2
+*	Tools4ever - HelloID - T4E_HelloID_OrganizationalUnits_v2
+*	Tools4ever - HelloID - T4E_HelloID_Users_v2
+*	Tools4ever - HelloID - T4E_HelloID_UserGroups_v2
 
 ### Target
 
 When the connector is defined as target system, only the following GetConnector is used by HelloID:
 
-*	Tools4ever - HelloID - T4E_HelloID_Users
+*	Tools4ever - HelloID - T4E_HelloID_Users_v2
 
 In addition to use to the above get-connector, the connector also uses the following build-in Profit update-connectors:
 
