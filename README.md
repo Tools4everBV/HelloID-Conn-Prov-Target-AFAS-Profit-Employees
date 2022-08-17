@@ -65,6 +65,7 @@ The following settings are required to connect to the API.
 | --------------------- | --------------------------------------------- | ----------- |
 | BaseUrl               | The URL to the AFAS environment REST services | Yes         |
 | ApiKey                | The AppConnector token to connect to AFAS     | Yes         |
+| Update Employee when correlating and mapped data differs from data in AFAS  | When toggled, the mapped properties will be updated in the create action (not just correlate). | No         |
 | Toggle debug logging  | When toggled, extra logging is shown. Note that this is only meant for debugging, please switch this off when in production. | No         |
 
 ### Prerequisites
