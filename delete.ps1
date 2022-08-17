@@ -31,7 +31,7 @@ $updateConnector = "KnEmployee"
 $filterfieldid = "Medewerker"
 $filtervalue = $aRef.Medewerker # Has to match the AFAS value of the specified filter field ($filterfieldid)
 $emailBusiness = $null #"$($aRef.Persoonsnummer)@domain.com" # Unique value based of PersonId because at the revoke action we want to clear the unique fields
-# $emailBusiness = $null #"$($aRef.Persoonsnummer)@domain.com" # Unique value based of PersonId because at the revoke action we want to clear the unique fields
+# $emailPortal = $null #"$($aRef.Persoonsnummer)@domain.com" # Unique value based of PersonId because at the revoke action we want to clear the unique fields
 # $telephoneNumber = $null
 # $mobile = $null
 
