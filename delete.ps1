@@ -55,7 +55,7 @@ $account = [PSCustomObject]@{
         }
     }
 }
-# # # Troubleshooting
+# # Troubleshooting
 # $dryRun = $false
 
 $filterfieldid = "Medewerker"
@@ -222,22 +222,22 @@ if ($null -ne $currentAccount.Medewerker) {
                     $updateAccount.'AfasEmployee'.'Element'.Objects[0].'KnPerson'.'Element'.'Fields'.'TeNr' = $account.'AfasEmployee'.'Element'.Objects[0].'KnPerson'.'Element'.'Fields'.'TeNr'
                     $telephoneNumberUpdated = $true
                     if (-not($dryRun -eq $true)) {
-                        Write-Information "Updating TelephoneNumber '$($currentAccount.Telefoonnr_werk)' with new value '$($updateAccount.'AfasEmployee'.'Element'.Objects[0].'KnPerson'.'Element'.'Fields'.'TeNr')'"
+                        Write-Information "Updating TeNr '$($currentAccount.Telefoonnr_werk)' with new value '$($updateAccount.'AfasEmployee'.'Element'.Objects[0].'KnPerson'.'Element'.'Fields'.'TeNr')'"
                     }
                     else {
-                        Write-Warning "DryRun: Would update TelephoneNumber '$($currentAccount.Telefoonnr_werk)' with new value '$($updateAccount.'AfasEmployee'.'Element'.Objects[0].'KnPerson'.'Element'.'Fields'.'TeNr')'"
+                        Write-Warning "DryRun: Would update TeNr '$($currentAccount.Telefoonnr_werk)' with new value '$($updateAccount.'AfasEmployee'.'Element'.Objects[0].'KnPerson'.'Element'.'Fields'.'TeNr')'"
                     }
                 }
 
                 if ('MbNr' -in $propertiesChanged) {
                     # Mobiel werk
                     $updateAccount.'AfasEmployee'.'Element'.Objects[0].'KnPerson'.'Element'.'Fields'.'MbNr' = $account.'AfasEmployee'.'Element'.Objects[0].'KnPerson'.'Element'.'Fields'.'MbNr'
-                    $mobileNumberUpdated = $true
+                    $mobileUpdated = $true
                     if (-not($dryRun -eq $true)) {
-                        Write-Information "Updating MobileNumber '$($currentAccount.Mobielnr_werk)' with new value '$($updateAccount.'AfasEmployee'.'Element'.Objects[0].'KnPerson'.'Element'.'Fields'.'MbNr')'"
+                        Write-Information "Updating MbNr '$($currentAccount.Mobielnr_werk)' with new value '$($updateAccount.'AfasEmployee'.'Element'.Objects[0].'KnPerson'.'Element'.'Fields'.'MbNr')'"
                     }
                     else {
-                        Write-Warning "DryRun: Would update MobileNumber '$($currentAccount.Mobielnr_werk)' with new value '$($updateAccount.'AfasEmployee'.'Element'.Objects[0].'KnPerson'.'Element'.'Fields'.'MbNr')'"
+                        Write-Warning "DryRun: Would update MbNr '$($currentAccount.Mobielnr_werk)' with new value '$($updateAccount.'AfasEmployee'.'Element'.Objects[0].'KnPerson'.'Element'.'Fields'.'MbNr')'"
                     }
                 }
 

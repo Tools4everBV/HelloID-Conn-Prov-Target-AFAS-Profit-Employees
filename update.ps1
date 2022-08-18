@@ -208,36 +208,36 @@ if ($null -ne $currentAccount.Medewerker) {
                 if ('EmailPortal' -in $propertiesChanged) {
                     # E-Mail toegang
                     $updateAccount.'AfasEmployee'.'Element'.Objects[0].'KnPerson'.'Element'.'Fields'.'EmailPortal' = $account.'AfasEmployee'.'Element'.Objects[0].'KnPerson'.'Element'.'Fields'.'EmailPortal'
-                    $emailBusinessUpdated = $true
+                    $emailPortalUpdated = $true
                     if (-not($dryRun -eq $true)) {
-                        Write-Information "Updating BusinessEmailAddress '$($currentAccount.Email_portal)' with new value '$($updateAccount.'AfasEmployee'.'Element'.Objects[0].'KnPerson'.'Element'.'Fields'.'EmailPortal')'"
+                        Write-Information "Updating EmailPortal '$($currentAccount.Email_portal)' with new value '$($updateAccount.'AfasEmployee'.'Element'.Objects[0].'KnPerson'.'Element'.'Fields'.'EmailPortal')'"
                     }
                     else {
-                        Write-Warning "DryRun: Would update BusinessEmailAddress '$($currentAccount.Email_portal)' with new value '$($updateAccount.'AfasEmployee'.'Element'.Objects[0].'KnPerson'.'Element'.'Fields'.'EmailPortal')'"
+                        Write-Warning "DryRun: Would update EmailPortal '$($currentAccount.Email_portal)' with new value '$($updateAccount.'AfasEmployee'.'Element'.Objects[0].'KnPerson'.'Element'.'Fields'.'EmailPortal')'"
                     }
                 }
 
                 if ('TeNr' -in $propertiesChanged) {
                     # Telefoonnr. werk
                     $updateAccount.'AfasEmployee'.'Element'.Objects[0].'KnPerson'.'Element'.'Fields'.'TeNr' = $account.'AfasEmployee'.'Element'.Objects[0].'KnPerson'.'Element'.'Fields'.'TeNr'
-                    $emailBusinessUpdated = $true
+                    $telephoneNumberUpdated = $true
                     if (-not($dryRun -eq $true)) {
-                        Write-Information "Updating BusinessEmailAddress '$($currentAccount.Telefoonnr_werk)' with new value '$($updateAccount.'AfasEmployee'.'Element'.Objects[0].'KnPerson'.'Element'.'Fields'.'TeNr')'"
+                        Write-Information "Updating TeNr '$($currentAccount.Telefoonnr_werk)' with new value '$($updateAccount.'AfasEmployee'.'Element'.Objects[0].'KnPerson'.'Element'.'Fields'.'TeNr')'"
                     }
                     else {
-                        Write-Warning "DryRun: Would update BusinessEmailAddress '$($currentAccount.Telefoonnr_werk)' with new value '$($updateAccount.'AfasEmployee'.'Element'.Objects[0].'KnPerson'.'Element'.'Fields'.'TeNr')'"
+                        Write-Warning "DryRun: Would update TeNr '$($currentAccount.Telefoonnr_werk)' with new value '$($updateAccount.'AfasEmployee'.'Element'.Objects[0].'KnPerson'.'Element'.'Fields'.'TeNr')'"
                     }
                 }
 
                 if ('MbNr' -in $propertiesChanged) {
                     # Mobiel werk
                     $updateAccount.'AfasEmployee'.'Element'.Objects[0].'KnPerson'.'Element'.'Fields'.'MbNr' = $account.'AfasEmployee'.'Element'.Objects[0].'KnPerson'.'Element'.'Fields'.'MbNr'
-                    $emailBusinessUpdated = $true
+                    $mobileUpdated = $true
                     if (-not($dryRun -eq $true)) {
-                        Write-Information "Updating BusinessEmailAddress '$($currentAccount.Mobielnr_werk)' with new value '$($updateAccount.'AfasEmployee'.'Element'.Objects[0].'KnPerson'.'Element'.'Fields'.'MbNr')'"
+                        Write-Information "Updating MbNr '$($currentAccount.Mobielnr_werk)' with new value '$($updateAccount.'AfasEmployee'.'Element'.Objects[0].'KnPerson'.'Element'.'Fields'.'MbNr')'"
                     }
                     else {
-                        Write-Warning "DryRun: Would update BusinessEmailAddress '$($currentAccount.Mobielnr_werk)' with new value '$($updateAccount.'AfasEmployee'.'Element'.Objects[0].'KnPerson'.'Element'.'Fields'.'MbNr')'"
+                        Write-Warning "DryRun: Would update MbNr '$($currentAccount.Mobielnr_werk)' with new value '$($updateAccount.'AfasEmployee'.'Element'.Objects[0].'KnPerson'.'Element'.'Fields'.'MbNr')'"
                     }
                 }
 
