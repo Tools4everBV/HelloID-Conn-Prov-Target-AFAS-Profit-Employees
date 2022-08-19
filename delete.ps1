@@ -141,15 +141,14 @@ catch {
     $auditErrorMessage = Resolve-AFASErrorMessage -ErrorObject $ex
     if ($auditErrorMessage -Like "No AFAS employee found with $($filterfieldid) $($filtervalue)") {
         if (-Not($dryRun -eq $True)) {
-            $success = $false
             $auditLogs.Add([PSCustomObject]@{
                     Action  = "DeleteAccount"
-                    Message = "No AFAS employee found with $($filterfieldid) $($filtervalue). Possibly deleted."
+                    Message = "No AFAS employee found with $($filterfieldid) $($filtervalue). Possibly already deleted, skipping action."
                     IsError = $true
                 })
         }
         else {
-            Write-Warning "DryRun: No AFAS employee found with $($filterfieldid) $($filtervalue). Possibly deleted."
+            Write-Warning "DryRun: No AFAS employee found with $($filterfieldid) $($filtervalue). Possibly already deleted, skipping action."
         }        
     }
     else {
