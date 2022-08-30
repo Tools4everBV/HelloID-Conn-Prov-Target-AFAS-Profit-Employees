@@ -1,155 +1,428 @@
-$config = ConvertFrom-Json $configuration
-
-$BaseUri = $config.BaseUri
-$Token = $config.Token
-$getConnector = "T4E_HelloID_Users"
-$updateConnector = "KnEmployee"
-
-#Initialize default properties
-$p = $person | ConvertFrom-Json;
-$m = $manager | ConvertFrom-Json;
-$aRef = $accountReference | ConvertFrom-Json;
-$mRef = $managerAccountReference | ConvertFrom-Json;
-$success = $False;
-$auditLogs = [collections.Generic.List[PSCustomObject]]::new();
+#####################################################
+# HelloID-Conn-Prov-Target-AFAS-Profit-Employees-Create
+#
+# Version: 2.0.0
+#####################################################
+# Initialize default values
+$c = $configuration | ConvertFrom-Json
+$p = $person | ConvertFrom-Json
+$success = $true # Set to true at start, because only when an error occurs it is set to false
+$auditLogs = [System.Collections.Generic.List[PSCustomObject]]::new()
 
 # Set TLS to accept TLS, TLS 1.1 and TLS 1.2
 [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls -bor [Net.SecurityProtocolType]::Tls11 -bor [Net.SecurityProtocolType]::Tls12
 
-$filterfieldid = "Persoonsnummer"
-$filtervalue = $p.externalId; # Has to match the AFAS value of the specified filter field ($filterfieldid)
-$emailaddress = $p.Accounts.MicrosoftActiveDirectory.mail;
-$userPrincipalName = $p.Accounts.MicrosoftActiveDirectory.userPrincipalName;
-# $telephoneNumber = $p.Accounts.MicrosoftActiveDirectory.telephoneNumber;
-# $mobile = $p.Accounts.MicrosoftActiveDirectory.mobile;
+$VerbosePreference = "SilentlyContinue"
+$InformationPreference = "Continue"
+$WarningPreference = "Continue"
 
-$EmAdUpdated = $false
-$EmailPortalUpdated = $false
+# Set debug logging
+switch ($($c.isDebug)) {
+    $true { $VerbosePreference = 'Continue' }
+    $false { $VerbosePreference = 'SilentlyContinue' }
+}
 
-try{
+# Used to connect to AFAS API endpoints
+$BaseUri = $c.BaseUri
+$Token = $c.Token
+$updateEmployeeOnCorrelate = $c.updateEmployeeOnCorrelate
+$getConnector = "T4E_HelloID_Users_v2"
+$updateConnector = "KnEmployee"
+$account = [PSCustomObject]@{
+    'AfasEmployee' = @{
+        'Element' = @{
+            'Objects' = @(
+                @{
+                    'KnPerson' = @{
+                        'Element' = @{
+                            'Fields' = @{
+                                # E-Mail werk  
+                                'EmAd' = $p.Accounts.MicrosoftActiveDirectory.mail
+
+                                # # E-mail toegang - Check with AFAS Administrator if this needs to be set
+                                # 'EmailPortal' = $p.Accounts.MicrosoftActiveDirectory.userPrincipalName 
+                            
+                                # # Telefoonnr. werk
+                                # 'TeNr'        = '0229123456'
+                                
+                                # # Mobiel werk
+                                # 'MbNr'        = '0612345678'
+                            }
+                        }
+                    }
+                }
+            )
+        }
+    }
+}
+# # Troubleshooting
+# $dryRun = $false
+
+$filterfieldid = "Medewerker"
+$filtervalue = $p.ExternalId # Has to match the AFAS value of the specified filter field ($filterfieldid)
+
+#region functions
+function Resolve-HTTPError {
+    [CmdletBinding()]
+    param (
+        [Parameter(Mandatory,
+            ValueFromPipeline
+        )]
+        [object]$ErrorObject
+    )
+    process {
+        $httpErrorObj = [PSCustomObject]@{
+            FullyQualifiedErrorId = $ErrorObject.FullyQualifiedErrorId
+            MyCommand             = $ErrorObject.InvocationInfo.MyCommand
+            RequestUri            = $ErrorObject.TargetObject.RequestUri
+            ScriptStackTrace      = $ErrorObject.ScriptStackTrace
+            ErrorMessage          = ''
+        }
+        if ($ErrorObject.Exception.GetType().FullName -eq 'Microsoft.PowerShell.Commands.HttpResponseException') {
+            $httpErrorObj.ErrorMessage = $ErrorObject.ErrorDetails.Message
+        }
+        elseif ($ErrorObject.Exception.GetType().FullName -eq 'System.Net.WebException') {
+            $httpErrorObj.ErrorMessage = [System.IO.StreamReader]::new($ErrorObject.Exception.Response.GetResponseStream()).ReadToEnd()
+        }
+        Write-Output $httpErrorObj
+    }
+}
+
+function Resolve-AFASErrorMessage {
+    [CmdletBinding()]
+    param (
+        [Parameter(Mandatory,
+            ValueFromPipeline
+        )]
+        [object]$ErrorObject
+    )
+    process {
+        try {
+            $errorObjectConverted = $ErrorObject | ConvertFrom-Json -ErrorAction Stop
+
+            if ($null -ne $errorObjectConverted.externalMessage) {
+                $errorMessage = $errorObjectConverted.externalMessage
+            }
+            else {
+                $errorMessage = $errorObjectConverted
+            }
+        }
+        catch {
+            $errorMessage = "$($ErrorObject.Exception.Message)"
+        }
+
+        Write-Output $errorMessage
+    }
+}
+#endregion functions
+
+# Get current AFAS employee and verify if a user must be either [created], [updated and correlated] or just [correlated]
+try {
+    Write-Verbose "Querying AFAS employee with $($filterfieldid) $($filtervalue)"
+
+    # Create authorization headers
     $encodedToken = [System.Convert]::ToBase64String([System.Text.Encoding]::ASCII.GetBytes($Token))
     $authValue = "AfasToken $encodedToken"
     $Headers = @{ Authorization = $authValue }
-    $getUri = $BaseUri + "/connectors/" + $getConnector + "?filterfieldids=$filterfieldid&filtervalues=$filtervalue&operatortypes=1"
-    $getResponse = Invoke-RestMethod -Method Get -Uri $getUri -ContentType "application/json;charset=utf-8" -Headers $Headers -UseBasicParsing
 
-    if($getResponse.rows.Count -eq 1){
-        # Retrieve current account data for properties to be updated
-        $previousAccount = [PSCustomObject]@{
-            'AfasEmployee' = @{
-                    'Element' = @{
-                        '@EmId' = $getResponse.rows.Medewerker;
-                        'Objects' = @(@{
-                            'KnPerson' = @{
-                                'Element' = @{
-                                    'Fields' = @{
-                                        # E-Mail werk  
-                                        'EmAd' = $getResponse.rows.Email_werk;
-                                  
-                                        # phone.business.fixed
-                                        'TeNr' = $getResponse.rows.Telefoonnr_werk;
-                                        # phone.business.mobile
-                                        'MbNr' = $getResponse.rows.Mobielnr_werk;  
-                                    }
-                                }
-                            }
-                        })
-                    }
-                }
+    $splatWebRequest = @{
+        Uri             = $BaseUri + "/connectors/" + $getConnector + "?filterfieldids=$filterfieldid&filtervalues=$filtervalue&operatortypes=1"
+        Headers         = $headers
+        Method          = 'GET'
+        ContentType     = "application/json;charset=utf-8"
+        UseBasicParsing = $true
+    }
+    $currentAccount = (Invoke-RestMethod @splatWebRequest -Verbose:$false).rows
+
+    if ($null -eq $currentAccount.Medewerker) {
+        throw "No AFAS employee found with $($filterfieldid) $($filtervalue)"
+    }
+
+    if ($updateEmployeeOnCorrelate -eq $true) {
+        $action = 'Update-Correlate'
+
+        # Check if current EmAd, EmailPortal, TeNr or MbNr has a different value from mapped value. AFAS will throw an error when trying to update this with the same value
+        if ([string]$currentAccount.Email_werk -ne $account.'AfasEmployee'.'Element'.Objects[0].'KnPerson'.'Element'.'Fields'.'EmAd' -and $null -ne $account.'AfasEmployee'.'Element'.Objects[0].'KnPerson'.'Element'.'Fields'.'EmAd') {
+            $propertiesChanged += @('EmAd')
         }
+        if ([string]$currentAccount.Email_portal -ne $account.'AfasEmployee'.'Element'.Objects[0].'KnPerson'.'Element'.'Fields'.'EmailPortal' -and $null -ne $account.'AfasEmployee'.'Element'.Objects[0].'KnPerson'.'Element'.'Fields'.'EmailPortal') {
+            $propertiesChanged += @('EmailPortal')
+        }
+        if ([string]$currentAccount.Telefoonnr_werk -ne $account.'AfasEmployee'.'Element'.Objects[0].'KnPerson'.'Element'.'Fields'.'TeNr' -and $null -ne $account.'AfasEmployee'.'Element'.Objects[0].'KnPerson'.'Element'.'Fields'.'TeNr') {
+            $propertiesChanged += @('TeNr')
+        }
+        if ([string]$currentAccount.Mobielnr_werk -ne $account.'AfasEmployee'.'Element'.Objects[0].'KnPerson'.'Element'.'Fields'.'MbNr' -and $null -ne $account.'AfasEmployee'.'Element'.Objects[0].'KnPerson'.'Element'.'Fields'.'MbNr') {
+            $propertiesChanged += @('MbNr')
+        }
+        if ($propertiesChanged) {
+            Write-Verbose "Account property(s) required to update: [$($propertiesChanged.name -join ",")]"
+            $updateAction = 'Update'
+        }
+        else {
+            $updateAction = 'NoChanges'
+        }
+    }
+    else {
+        $action = 'Correlate'
+    }
 
-        # Map the properties to update
-        $account = [PSCustomObject]@{
-            'AfasEmployee' = @{
-                'Element' = @{
-                    '@EmId' = $getResponse.rows.Medewerker;
-                    'Objects' = @(@{
-                        'KnPerson' = @{
-                            'Element' = @{
-                                'Fields' = @{
-                                    # Zoek op BcCo (Persoons-ID)
-                                    'MatchPer' = 0;
-                                    # Nummer
-                                    'BcCo' = $getResponse.rows.Persoonsnummer;
+}
+catch {
+    $ex = $PSItem
+    if ( $($ex.Exception.GetType().FullName -eq 'Microsoft.PowerShell.Commands.HttpResponseException') -or $($ex.Exception.GetType().FullName -eq 'System.Net.WebException')) {
+        $errorObject = Resolve-HTTPError -Error $ex
 
-                                    # E-Mail toegang - Check with AFAS Administrator if this needs to be set
-                                    # 'EmailPortal' = $userPrincipalName;
+        $verboseErrorMessage = $errorObject.ErrorMessage
 
-                                    <#
-                                    # phone.business.fixed
-                                    'TeNr' = $telephoneNumber;
-                                    # phone.business.mobile
-                                    'MbNr' = $mobile;
-                                    #>    
+        $auditErrorMessage = Resolve-AFASErrorMessage -ErrorObject $errorObject.ErrorMessage
+    }
+
+    # If error message empty, fall back on $ex.Exception.Message
+    if ([String]::IsNullOrEmpty($verboseErrorMessage)) {
+        $verboseErrorMessage = $ex.Exception.Message
+    }
+    if ([String]::IsNullOrEmpty($auditErrorMessage)) {
+        $auditErrorMessage = $ex.Exception.Message
+    }
+
+    Write-Verbose "Error at Line '$($ex.InvocationInfo.ScriptLineNumber)': $($ex.InvocationInfo.Line). Error: $($verboseErrorMessage)"
+
+    if ($auditErrorMessage -Like "No AFAS employee found with $($filterfieldid) $($filtervalue)") {
+        $success = $false
+        $auditLogs.Add([PSCustomObject]@{
+                Action  = "CreateAccount"
+                Message = "No AFAS employee found with $($filterfieldid) $($filtervalue). Possibly deleted."
+                IsError = $true
+            })
+        Write-Warning "DryRun: No AFAS employee found with $($filterfieldid) $($filtervalue). Possibly deleted."
+    }
+    else {
+        $success = $false  
+        $auditLogs.Add([PSCustomObject]@{
+                Action  = "CreateAccount"
+                Message = "Error querying AFAS employee found with $($filterfieldid) $($filtervalue). Error Message: $auditErrorMessage"
+                IsError = $True
+            })
+    }
+}
+
+# Update AFAS Employee
+$emailBusinessUpdated = $false
+$emailPortalUpdated = $false
+$telephoneNumberUpdated = $false
+$mobileUpdated = $false
+if ($null -ne $currentAccount.Medewerker) {
+    switch ($action) {
+        'Update-Correlate' {
+            Write-Verbose "Updating and correlating AFAS employee $($currentAccount.Medewerker)"
+
+            switch ($updateAction) {
+                'Update' {
+                    try {
+                        # Create custom account object for update
+                        $updateAccount = [PSCustomObject]@{
+                            'AfasEmployee' = @{
+                                'Element' = @{
+                                    '@EmId'   = $currentAccount.Medewerker
+                                    'Objects' = @(@{
+                                            'KnPerson' = @{
+                                                'Element' = @{
+                                                    'Fields' = @{
+                                                        # Zoek op BcCo (Persoons-ID)
+                                                        'MatchPer' = 0
+                                                        # Nummer
+                                                        'BcCo'     = $currentAccount.Persoonsnummer
+                                                    }
+                                                }
+                                            }
+                                        })
                                 }
                             }
                         }
-                    })
+
+                        # Check if currentEmAd, EmailPortal, TeNr or MbNr has a different value from mapped value. AFAS will throw an error when trying to update this with the same value
+                        if ('EmAd' -in $propertiesChanged) {
+                            # E-mail werk
+                            $updateAccount.'AfasEmployee'.'Element'.Objects[0].'KnPerson'.'Element'.'Fields'.'EmAd' = $account.'AfasEmployee'.'Element'.Objects[0].'KnPerson'.'Element'.'Fields'.'EmAd'
+                            $emailBusinessUpdated = $true
+                            if (-not($dryRun -eq $true)) {
+                                Write-Information "Updating BusinessEmailAddress '$($currentAccount.Email_werk)' with new value '$($updateAccount.'AfasEmployee'.'Element'.Objects[0].'KnPerson'.'Element'.'Fields'.'EmAd')'"
+                            }
+                            else {
+                                Write-Warning "DryRun: Would update BusinessEmailAddress '$($currentAccount.Email_werk)' with new value '$($updateAccount.'AfasEmployee'.'Element'.Objects[0].'KnPerson'.'Element'.'Fields'.'EmAd')'"
+                            }
+                        }
+
+                        if ('EmailPortal' -in $propertiesChanged) {
+                            # E-Mail toegang
+                            $updateAccount.'AfasEmployee'.'Element'.Objects[0].'KnPerson'.'Element'.'Fields'.'EmailPortal' = $account.'AfasEmployee'.'Element'.Objects[0].'KnPerson'.'Element'.'Fields'.'EmailPortal'
+                            $emailPortalUpdated = $true
+                            if (-not($dryRun -eq $true)) {
+                                Write-Information "Updating EmailPortal '$($currentAccount.Email_portal)' with new value '$($updateAccount.'AfasEmployee'.'Element'.Objects[0].'KnPerson'.'Element'.'Fields'.'EmailPortal')'"
+                            }
+                            else {
+                                Write-Warning "DryRun: Would update EmailPortal '$($currentAccount.Email_portal)' with new value '$($updateAccount.'AfasEmployee'.'Element'.Objects[0].'KnPerson'.'Element'.'Fields'.'EmailPortal')'"
+                            }
+                        }
+
+                        if ('TeNr' -in $propertiesChanged) {
+                            # Telefoonnr. werk
+                            $updateAccount.'AfasEmployee'.'Element'.Objects[0].'KnPerson'.'Element'.'Fields'.'TeNr' = $account.'AfasEmployee'.'Element'.Objects[0].'KnPerson'.'Element'.'Fields'.'TeNr'
+                            $telephoneNumberUpdated = $true
+                            if (-not($dryRun -eq $true)) {
+                                Write-Information "Updating TeNr '$($currentAccount.Telefoonnr_werk)' with new value '$($updateAccount.'AfasEmployee'.'Element'.Objects[0].'KnPerson'.'Element'.'Fields'.'TeNr')'"
+                            }
+                            else {
+                                Write-Warning "DryRun: Would update TeNr '$($currentAccount.Telefoonnr_werk)' with new value '$($updateAccount.'AfasEmployee'.'Element'.Objects[0].'KnPerson'.'Element'.'Fields'.'TeNr')'"
+                            }
+                        }
+
+                        if ('MbNr' -in $propertiesChanged) {
+                            # Mobiel werk
+                            $updateAccount.'AfasEmployee'.'Element'.Objects[0].'KnPerson'.'Element'.'Fields'.'MbNr' = $account.'AfasEmployee'.'Element'.Objects[0].'KnPerson'.'Element'.'Fields'.'MbNr'
+                            $mobileUpdated = $true
+                            if (-not($dryRun -eq $true)) {
+                                Write-Information "Updating MbNr '$($currentAccount.Mobielnr_werk)' with new value '$($updateAccount.'AfasEmployee'.'Element'.Objects[0].'KnPerson'.'Element'.'Fields'.'MbNr')'"
+                            }
+                            else {
+                                Write-Warning "DryRun: Would update MbNr '$($currentAccount.Mobielnr_werk)' with new value '$($updateAccount.'AfasEmployee'.'Element'.Objects[0].'KnPerson'.'Element'.'Fields'.'MbNr')'"
+                            }
+                        }
+
+                        $body = ($updateAccount | ConvertTo-Json -Depth 10)
+                        $splatWebRequest = @{
+                            Uri             = $BaseUri + "/connectors/" + $updateConnector
+                            Headers         = $headers
+                            Method          = 'PUT'
+                            Body            = ([System.Text.Encoding]::UTF8.GetBytes($body))
+                            ContentType     = "application/json;charset=utf-8"
+                            UseBasicParsing = $true
+                        }
+
+                        if (-not($dryRun -eq $true)) {
+                            $updatedAccount = Invoke-RestMethod @splatWebRequest -Verbose:$false
+                            # Set aRef object for use in futher actions
+                            $aRef = [PSCustomObject]@{
+                                Medewerker     = $currentAccount.Medewerker
+                                Persoonsnummer = $currentAccount.Persoonsnummer
+                            }
+
+                            $auditLogs.Add([PSCustomObject]@{
+                                    Action  = "CreateAccount"
+                                    Message = "Successfully updated AFAS employee $($currentAccount.Medewerker)"
+                                    IsError = $false
+                                })
+                        }
+                        else {
+                            Write-Warning "DryRun: Would update AFAS employee $($currentAccount.Medewerker)"
+                        }
+                        break
+                    }
+                    catch {
+                        $ex = $PSItem
+                        if ( $($ex.Exception.GetType().FullName -eq 'Microsoft.PowerShell.Commands.HttpResponseException') -or $($ex.Exception.GetType().FullName -eq 'System.Net.WebException')) {
+                            $errorObject = Resolve-HTTPError -Error $ex
+                    
+                            $verboseErrorMessage = $errorObject.ErrorMessage
+                    
+                            $auditErrorMessage = Resolve-AFASErrorMessage -ErrorObject $errorObject.ErrorMessage
+                        }
+                    
+                        # If error message empty, fall back on $ex.Exception.Message
+                        if ([String]::IsNullOrEmpty($verboseErrorMessage)) {
+                            $verboseErrorMessage = $ex.Exception.Message
+                        }
+                        if ([String]::IsNullOrEmpty($auditErrorMessage)) {
+                            $auditErrorMessage = $ex.Exception.Message
+                        }
+                    
+                        $ex = $PSItem
+                        $verboseErrorMessage = $ex
+                        
+                        Write-Verbose "Error at Line '$($ex.InvocationInfo.ScriptLineNumber)': $($ex.InvocationInfo.Line). Error: $($verboseErrorMessage)"
+                        
+                        $success = $false  
+                        $auditLogs.Add([PSCustomObject]@{
+                                Action  = "CreateAccount"
+                                Message = "Error updating AFAS employee $($currentAccount.Medewerker). Error Message: $auditErrorMessage"
+                                IsError = $True
+                            })
+                    }
+                }
+                'NoChanges' {
+                    Write-Verbose "No changes to AFAS employee $($currentAccount.Medewerker)"
+
+                    if (-not($dryRun -eq $true)) {
+                        # Set aRef object for use in futher actions
+                        $aRef = [PSCustomObject]@{
+                            Medewerker     = $currentAccount.Medewerker
+                            Persoonsnummer = $currentAccount.Persoonsnummer
+                        }
+
+                        $auditLogs.Add([PSCustomObject]@{
+                                Action  = "CreateAccount"
+                                Message = "Successfully updated AFAS employee $($currentAccount.Medewerker). (No Changes needed)"
+                                IsError = $false
+                            })
+                    }
+                    else {
+                        Write-Warning "DryRun: No changes to AFAS employee $($currentAccount.Medewerker)"
+                    }
+                    break
                 }
             }
+            break
         }
-        # Set variable to indicate update of EmailPortal has occurred (for export data object)
-        # $EmailPortalUpdated = $true
+        'Correlate' {
+            Write-Verbose "Correlating AFAS employee $($currentAccount.Medewerker)"
 
-        # If '$emailAdddres' does not match current 'EmAd', add 'EmAd' to update body. AFAS will throw an error when trying to update this with the same value
-        if( $getResponse.rows.Email_werk -ne $emailaddress -and -not[string]::IsNullOrEmpty($emailaddress) ){
-            # E-mail werk
-            $account.'AfasEmployee'.'Element'.Objects[0].'KnPerson'.'Element'.'Fields' += @{'EmAd' = $emailaddress}
-            Write-Verbose -Verbose "Updating BusinessEmailAddress '$($getResponse.rows.Email_werk)' with new value '$emailaddress'"
-            # Set variable to indicate update of EmAd has occurred (for export data object)
-            $EmAdUpdated = $true
-        }   
+            if (-not($dryRun -eq $true)) {
+                # Set aRef object for use in futher actions
+                $aRef = [PSCustomObject]@{
+                    Medewerker     = $currentAccount.Medewerker
+                    Persoonsnummer = $currentAccount.Persoonsnummer
+                }
 
-        # Set aRef object for use in futher actions
-        $aRef = [PSCustomObject]@{
-            Medewerker = $getResponse.rows.Medewerker
-            Persoonsnummer = $getResponse.rows.Persoonsnummer
+                $auditLogs.Add([PSCustomObject]@{
+                        Action  = "CreateAccount"
+                        Message = "Successfully correlated AFAS employee $($currentAccount.Medewerker)"
+                        IsError = $false
+                    })
+            }
+            else {
+                Write-Warning "DryRun: Would correlate AFAS employee $($currentAccount.Medewerker)"
+            }
+            break
         }
-
-        if(-Not($dryRun -eq $True)){
-            $body = $account | ConvertTo-Json -Depth 10
-
-            $putUri = $BaseUri + "/connectors/" + $updateConnector
-            $putResponse = Invoke-RestMethod -Method Put -Uri $putUri -Body $body -ContentType "application/json;charset=utf-8" -Headers $Headers -UseBasicParsing
-        }
-
-        $auditLogs.Add([PSCustomObject]@{
-            Action = "CreateAccount"
-            Message = "Correlated to and updated fields of account with id $($aRef.Medewerker)"
-            IsError = $false;
-        });
-
-        $success = $true;       
     }
-}catch{
-    $auditLogs.Add([PSCustomObject]@{
-        Action = "CreateAccount"
-        Message = "Error correlating and updating fields of account with Id $($aRef.Medewerker): $($_)"
-        IsError = $True
-    });
-    Write-Warning $_;
 }
 
 # Send results
 $result = [PSCustomObject]@{
-	Success= $success;
-	AccountReference= $aRef;
-	AuditLogs = $auditLogs;
-    Account = $account;
-    PreviousAccount = $previousAccount;    
+    Success          = $success
+    AccountReference = $aRef
+    AuditLogs        = $auditLogs
+    Account          = $account
+    PreviousAccount  = $previousAccount    
 
     # Optionally return data for use in other systems
     ExportData       = [PSCustomObject]@{
-        Medewerker      = $aRef.Medewerker
-        Persoonsnummer  = $aRef.Persoonsnummer      
-    };    
-};
+        Medewerker     = $aRef.Medewerker
+        Persoonsnummer = $aRef.Persoonsnummer      
+    }
+}
 
 # Only add the data to ExportData if it has actually been updated, since we want to store the data HelloID has sent
-if($EmAdUpdated -eq $true){
+if ($emailBusinessUpdated -eq $true) {
     $result.ExportData | Add-Member -MemberType NoteProperty -Name BusinessEmailAddress -Value $($account.AfasEmployee.Element.Objects[0].KnPerson.Element.Fields.EmAd) -Force
 }
-if($EmailPortalUpdated -eq $true){
+if ($emailPortalUpdated -eq $true) {
     $result.ExportData | Add-Member -MemberType NoteProperty -Name PortalEmailAddress -Value $($account.AfasEmployee.Element.Objects[0].KnPerson.Element.Fields.EmailPortal) -Force
 }
-Write-Output $result | ConvertTo-Json -Depth 10;
+if ($telephoneNumberUpdated -eq $true) {
+    $result.ExportData | Add-Member -MemberType NoteProperty -Name TelephoneNumber -Value $($account.AfasEmployee.Element.Objects[0].KnPerson.Element.Fields.TeNr) -Force
+}
+if ($mobileUpdated -eq $true) {
+    $result.ExportData | Add-Member -MemberType NoteProperty -Name MobileNumber -Value $($account.AfasEmployee.Element.Objects[0].KnPerson.Element.Fields.MbNr) -Force
+}
+Write-Output $result | ConvertTo-Json -Depth 10
