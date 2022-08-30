@@ -1,7 +1,7 @@
 #####################################################
 # HelloID-Conn-Prov-Target-AFAS-Profit-Employees-Delete
 #
-# Version: 1.2.0
+# Version: 2.0.0
 #####################################################
 # Initialize default values
 $c = $configuration | ConvertFrom-Json
@@ -62,6 +62,32 @@ $filterfieldid = "Medewerker"
 $filtervalue = $aRef.Medewerker # Has to match the AFAS value of the specified filter field ($filterfieldid)
 
 #region functions
+function Resolve-HTTPError {
+    [CmdletBinding()]
+    param (
+        [Parameter(Mandatory,
+            ValueFromPipeline
+        )]
+        [object]$ErrorObject
+    )
+    process {
+        $httpErrorObj = [PSCustomObject]@{
+            FullyQualifiedErrorId = $ErrorObject.FullyQualifiedErrorId
+            MyCommand             = $ErrorObject.InvocationInfo.MyCommand
+            RequestUri            = $ErrorObject.TargetObject.RequestUri
+            ScriptStackTrace      = $ErrorObject.ScriptStackTrace
+            ErrorMessage          = ''
+        }
+        if ($ErrorObject.Exception.GetType().FullName -eq 'Microsoft.PowerShell.Commands.HttpResponseException') {
+            $httpErrorObj.ErrorMessage = $ErrorObject.ErrorDetails.Message
+        }
+        elseif ($ErrorObject.Exception.GetType().FullName -eq 'System.Net.WebException') {
+            $httpErrorObj.ErrorMessage = [System.IO.StreamReader]::new($ErrorObject.Exception.Response.GetResponseStream()).ReadToEnd()
+        }
+        Write-Output $httpErrorObj
+    }
+}
+
 function Resolve-AFASErrorMessage {
     [CmdletBinding()]
     param (
@@ -135,10 +161,24 @@ try {
 }
 catch {
     $ex = $PSItem
-    $verboseErrorMessage = $ex
+    if ( $($ex.Exception.GetType().FullName -eq 'Microsoft.PowerShell.Commands.HttpResponseException') -or $($ex.Exception.GetType().FullName -eq 'System.Net.WebException')) {
+        $errorObject = Resolve-HTTPError -Error $ex
+
+        $verboseErrorMessage = $errorObject.ErrorMessage
+
+        $auditErrorMessage = Resolve-AFASErrorMessage -ErrorObject $errorObject.ErrorMessage
+    }
+
+    # If error message empty, fall back on $ex.Exception.Message
+    if ([String]::IsNullOrEmpty($verboseErrorMessage)) {
+        $verboseErrorMessage = $ex.Exception.Message
+    }
+    if ([String]::IsNullOrEmpty($auditErrorMessage)) {
+        $auditErrorMessage = $ex.Exception.Message
+    }
+
     Write-Verbose "Error at Line '$($ex.InvocationInfo.ScriptLineNumber)': $($ex.InvocationInfo.Line). Error: $($verboseErrorMessage)"
 
-    $auditErrorMessage = Resolve-AFASErrorMessage -ErrorObject $ex
     if ($auditErrorMessage -Like "No AFAS employee found with $($filterfieldid) $($filtervalue)") {
         if (-Not($dryRun -eq $True)) {
             $auditLogs.Add([PSCustomObject]@{
@@ -266,10 +306,23 @@ if ($null -ne $currentAccount.Medewerker) {
             }
             catch {
                 $ex = $PSItem
-                $verboseErrorMessage = $ex
+                if ( $($ex.Exception.GetType().FullName -eq 'Microsoft.PowerShell.Commands.HttpResponseException') -or $($ex.Exception.GetType().FullName -eq 'System.Net.WebException')) {
+                    $errorObject = Resolve-HTTPError -Error $ex
+            
+                    $verboseErrorMessage = $errorObject.ErrorMessage
+            
+                    $auditErrorMessage = Resolve-AFASErrorMessage -ErrorObject $errorObject.ErrorMessage
+                }
+            
+                # If error message empty, fall back on $ex.Exception.Message
+                if ([String]::IsNullOrEmpty($verboseErrorMessage)) {
+                    $verboseErrorMessage = $ex.Exception.Message
+                }
+                if ([String]::IsNullOrEmpty($auditErrorMessage)) {
+                    $auditErrorMessage = $ex.Exception.Message
+                }
+
                 Write-Verbose "Error at Line '$($ex.InvocationInfo.ScriptLineNumber)': $($ex.InvocationInfo.Line). Error: $($verboseErrorMessage)"
-                
-                $auditErrorMessage = Resolve-AFASErrorMessage -ErrorObject $ex
                 
                 $success = $false  
                 $auditLogs.Add([PSCustomObject]@{

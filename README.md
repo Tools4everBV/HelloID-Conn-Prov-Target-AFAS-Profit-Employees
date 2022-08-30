@@ -10,8 +10,7 @@
 ## Versioning
 | Version | Description | Date |
 | - | - | - |
-| 1.2.0   | Performance and logging upgrade | 2022/08/15  |
-| 1.1.0   | V2 version | 2022/05/23  |
+| 2.0.0   | Release of v2 connector including performance and logging upgrades | 2022/08/30  |
 | 1.0.0   | Initial release | 2020/07/24  |
 
 <!-- TABLE OF CONTENTS -->
