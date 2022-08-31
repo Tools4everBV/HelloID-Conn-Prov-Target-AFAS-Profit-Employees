@@ -94,7 +94,7 @@ The data collection can be changed by the customer itself to meet their requirem
 ### UpdateConnector
 In addition to use to the above get-connector, the connector also uses the following build-in Profit update-connectors:
 
-*	knPerson
+*	knEmployee
 
 ## Getting help
 > _For more information on how to configure a HelloID PowerShell connector, please refer to our [documentation](https://docs.helloid.com/hc/en-us/articles/360012558020-Configure-a-custom-PowerShell-target-system) pages_
