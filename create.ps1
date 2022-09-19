@@ -28,6 +28,8 @@ $Token = $c.Token
 $updateEmployeeOnCorrelate = $c.updateEmployeeOnCorrelate
 $getConnector = "T4E_HelloID_Users_v2"
 $updateConnector = "KnEmployee"
+
+#Change mapping here
 $account = [PSCustomObject]@{
     'AfasEmployee' = @{
         'Element' = @{
