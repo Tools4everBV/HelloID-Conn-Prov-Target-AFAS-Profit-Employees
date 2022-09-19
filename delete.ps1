@@ -28,6 +28,8 @@ $BaseUri = $c.BaseUri
 $Token = $c.Token
 $getConnector = "T4E_HelloID_Users_v2"
 $updateConnector = "KnEmployee"
+
+#Change mapping here
 $account = [PSCustomObject]@{
     'AfasEmployee' = @{
         'Element' = @{
