@@ -126,6 +126,7 @@ try {
     $encodedToken = [System.Convert]::ToBase64String([System.Text.Encoding]::ASCII.GetBytes($Token))
     $authValue = "AfasToken $encodedToken"
     $Headers = @{ Authorization = $authValue }
+    $Headers.Add("IntegrationId", "45963_140664") # Fixed value - Tools4ever Partner Integration ID
 
     $splatWebRequest = @{
         Uri             = $BaseUri + "/connectors/" + $getConnector + "?filterfieldids=$filterfieldid&filtervalues=$filtervalue&operatortypes=1"
