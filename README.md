@@ -7,16 +7,9 @@
   <img src="https://www.tools4ever.nl/connector-logos/afas-logo.png">
 </p>
 
-## Versioning
-| Version | Description | Date |
-| - | - | - |
-| 2.0.0   | Release of v2 connector including performance and logging upgrades | 2022/08/30  |
-| 1.0.0   | Initial release | 2020/07/24  |
-
 <!-- TABLE OF CONTENTS -->
 ## Table of Contents
 - [HelloID-Conn-Prov-Target-AFAS-Profit-Employees](#helloid-conn-prov-target-afas-profit-employees)
-  - [Versioning](#versioning)
   - [Table of Contents](#table-of-contents)
   - [Introduction](#introduction)
   - [Getting Started](#getting-started)
