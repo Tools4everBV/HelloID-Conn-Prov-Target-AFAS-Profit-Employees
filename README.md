@@ -1,4 +1,5 @@
 # HelloID-Conn-Prov-Target-AFAS-Profit-Employees
+Repository for HelloID Provisioning Target Connector to AFAS Employees
 
 <a href="https://github.com/Tools4everBV/HelloID-Conn-Prov-Target-AFAS-Profit-Employees/network/members"><img src="https://img.shields.io/github/forks/Tools4everBV/HelloID-Conn-Prov-Target-AFAS-Profit-Employees" alt="Forks Badge"/></a>
 <a href="https://github.com/Tools4everBV/HelloID-Conn-Prov-Target-AFAS-Profit-Employees/pulls"><img src="https://img.shields.io/github/issues-pr/Tools4everBV/HelloID-Conn-Prov-Target-AFAS-Profit-Employees" alt="Pull Requests Badge"/></a>
@@ -9,7 +10,6 @@
 | :information_source: Information |
 |:---------------------------|
 | This repository contains the connector and configuration code only. The implementer is responsible to acquire the connection details such as username, password, certificate, etc. You might even need to sign a contract or agreement with the supplier before implementing this connector. Please contact the client's application manager to coordinate the connector requirements.       |
-
 
 <p align="center">
   <img src="https://www.tools4ever.nl/connector-logos/afas-logo.png">
