@@ -6,6 +6,7 @@
 # Initialize default values
 $c = $configuration | ConvertFrom-Json
 $p = $person | ConvertFrom-Json
+$aRef = "Unknown" # Set to "Unknown" at start, because it is required for a preview, but isn't set in preview. The actual run will overwrite this with the actual aRef.
 $success = $false # Set to false at start, at the end, only when no error occurs it is set to true
 $auditLogs = [System.Collections.Generic.List[PSCustomObject]]::new()
 
