@@ -195,22 +195,22 @@ try {
             throw "No AFAS employee found AFAS employee where [$($correlationProperty)] = [$($correlationValue)]"
         }
 
+        # Retrieve current account data for properties to be updated
+        $previousAccount = [PSCustomObject]@{
+            # E-Mail werk  
+            'EmAd'        = $currentAccount.Email_werk
+            # E-mail toegang
+            'EmailPortal' = $currentAccount.Email_portal
+            # Telefoonnr. werk
+            'TeNr'        = $currentAccount.Telefoonnr_werk
+            # Mobiel werk
+            'MbNr'        = $currentAccount.Mobielnr_werk
+        }
+            
         if ($updateOnCorrelate -eq $true) {
             $action = 'Update-Correlate'
         
             $propertiesChanged = $null
-
-            # Retrieve current account data for properties to be updated
-            $previousAccount = [PSCustomObject]@{
-                # E-Mail werk  
-                'EmAd'        = $currentAccount.Email_werk
-                # E-mail toegang
-                'EmailPortal' = $currentAccount.Email_portal
-                # Telefoonnr. werk
-                'TeNr'        = $currentAccount.Telefoonnr_werk
-                # Mobiel werk
-                'MbNr'        = $currentAccount.Mobielnr_werk
-            }
 
             $splatCompareProperties = @{
                 ReferenceObject  = @($previousAccount.PSObject.Properties)
