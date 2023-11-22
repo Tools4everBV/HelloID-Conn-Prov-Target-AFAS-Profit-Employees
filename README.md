@@ -1,8 +1,16 @@
 # HelloID-Conn-Prov-Target-AFAS-Profit-Employees
+
+<a href="https://github.com/Tools4everBV/HelloID-Conn-Prov-Target-AFAS-Profit-Employees/network/members"><img src="https://img.shields.io/github/forks/Tools4everBV/HelloID-Conn-Prov-Target-AFAS-Profit-Employees" alt="Forks Badge"/></a>
+<a href="https://github.com/Tools4everBV/HelloID-Conn-Prov-Target-AFAS-Profit-Employees/pulls"><img src="https://img.shields.io/github/issues-pr/Tools4everBV/HelloID-Conn-Prov-Target-AFAS-Profit-Employees" alt="Pull Requests Badge"/></a>
+<a href="https://github.com/Tools4everBV/HelloID-Conn-Prov-Target-AFAS-Profit-Employees/issues"><img src="https://img.shields.io/github/issues/Tools4everBV/HelloID-Conn-Prov-Target-AFAS-Profit-Employees" alt="Issues Badge"/></a>
+<a href="https://github.com/Tools4everBV/HelloID-Conn-Prov-Target-AFAS-Profit-Employees/graphs/contributors"><img alt="GitHub contributors" src="https://img.shields.io/github/contributors/Tools4everBV/HelloID-Conn-Prov-Target-AFAS-Profit-Employees?color=2b9348"></a>
+
+
 | :information_source: Information |
 |:---------------------------|
 | This repository contains the connector and configuration code only. The implementer is responsible to acquire the connection details such as username, password, certificate, etc. You might even need to sign a contract or agreement with the supplier before implementing this connector. Please contact the client's application manager to coordinate the connector requirements.       |
-<br />
+
+
 <p align="center">
   <img src="https://www.tools4ever.nl/connector-logos/afas-logo.png">
 </p>
