@@ -115,13 +115,17 @@ function Get-ErrorMessage {
         }
 
         if ( $($ErrorObject.Exception.GetType().FullName -eq 'Microsoft.PowerShell.Commands.HttpResponseException') -or $($ErrorObject.Exception.GetType().FullName -eq 'System.Net.WebException')) {
-            $httpErrorObject = Resolve-HTTPError -Error $ErrorObject
-
-            $errorMessage.VerboseErrorMessage = $httpErrorObject.ErrorMessage
-
-            $errorMessage.AuditErrorMessage = Resolve-AFASErrorMessage -ErrorObject $httpErrorObject.ErrorMessage
+            $httpErrorObject = Resolve-HTTPError -ErrorObject $ErrorObject
+            
+            if(-not[String]::IsNullOrEmpty($httpErrorObject.ErrorMessage)){
+                $errorMessage.VerboseErrorMessage = $httpErrorObject.ErrorMessage
+                $errorMessage.AuditErrorMessage = Resolve-AFASErrorMessage -ErrorObject $httpErrorObject.ErrorMessage
+            }else{
+                $errorMessage.VerboseErrorMessage = $ErrorObject.Exception.Message
+                $errorMessage.AuditErrorMessage = $ErrorObject.Exception.Message
+            }
         }
-
+        
         # If error message empty, fall back on $ex.Exception.Message
         if ([String]::IsNullOrEmpty($errorMessage.VerboseErrorMessage)) {
             $errorMessage.VerboseErrorMessage = $ErrorObject.Exception.Message
