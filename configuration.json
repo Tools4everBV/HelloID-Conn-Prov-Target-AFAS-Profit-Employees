@@ -22,13 +22,33 @@
     }
   },
   {
-    "key": "updateEmployeeOnCorrelate",
+    "key": "GetConnector",
+    "type": "input",
+    "defaultValue": "T4E_HelloID_Users_v2",
+    "templateOptions": {
+      "label": "GetConnector",
+      "placeholder": "T4E_HelloID_Users_v2",
+      "required": true
+    }
+  },
+  {
+    "key": "UpdateConnector",
+    "type": "input",
+    "defaultValue": "KnEmployee",
+    "templateOptions": {
+      "label": "UpdateConnector",
+      "placeholder": "KnEmployee",
+      "required": true
+    }
+  },
+  {
+    "key": "updateOnCorrelate",
     "type": "checkbox",
     "defaultValue": false,
     "templateOptions": {
-      "label": "Update Employee when correlating and mapped data differs from data in AFAS",
+      "label": "Update on correlate",
       "required": false,
-      "description": "This will update AFAS employees in the create action (not just correlate)."
+      "description": "When toggled, if the mapped data differs from data in AFAS, the AFAS employee will be updated in the create action (not just correlated)."
     }
   },
   {

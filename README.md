@@ -1,4 +1,12 @@
 # HelloID-Conn-Prov-Target-AFAS-Profit-Employees
+Repository for HelloID Provisioning Target Connector to AFAS Employees
+
+<a href="https://github.com/Tools4everBV/HelloID-Conn-Prov-Target-AFAS-Profit-Employees/network/members"><img src="https://img.shields.io/github/forks/Tools4everBV/HelloID-Conn-Prov-Target-AFAS-Profit-Employees" alt="Forks Badge"/></a>
+<a href="https://github.com/Tools4everBV/HelloID-Conn-Prov-Target-AFAS-Profit-Employees/pulls"><img src="https://img.shields.io/github/issues-pr/Tools4everBV/HelloID-Conn-Prov-Target-AFAS-Profit-Employees" alt="Pull Requests Badge"/></a>
+<a href="https://github.com/Tools4everBV/HelloID-Conn-Prov-Target-AFAS-Profit-Employees/issues"><img src="https://img.shields.io/github/issues/Tools4everBV/HelloID-Conn-Prov-Target-AFAS-Profit-Employees" alt="Issues Badge"/></a>
+<a href="https://github.com/Tools4everBV/HelloID-Conn-Prov-Target-AFAS-Profit-Employees/graphs/contributors"><img alt="GitHub contributors" src="https://img.shields.io/github/contributors/Tools4everBV/HelloID-Conn-Prov-Target-AFAS-Profit-Employees?color=2b9348"></a>
+
+
 | :information_source: Information |
 |:---------------------------|
 | This repository contains the connector and configuration code only. The implementer is responsible to acquire the connection details such as username, password, certificate, etc. You might even need to sign a contract or agreement with the supplier before implementing this connector. Please contact the client's application manager to coordinate the connector requirements.       |
@@ -7,16 +15,9 @@
   <img src="https://www.tools4ever.nl/connector-logos/afas-logo.png">
 </p>
 
-## Versioning
-| Version | Description | Date |
-| - | - | - |
-| 2.0.0   | Release of v2 connector including performance and logging upgrades | 2022/08/30  |
-| 1.0.0   | Initial release | 2020/07/24  |
-
 <!-- TABLE OF CONTENTS -->
 ## Table of Contents
 - [HelloID-Conn-Prov-Target-AFAS-Profit-Employees](#helloid-conn-prov-target-afas-profit-employees)
-  - [Versioning](#versioning)
   - [Table of Contents](#table-of-contents)
   - [Introduction](#introduction)
   - [Getting Started](#getting-started)
@@ -60,12 +61,14 @@ Please see the following pages from the AFAS Knowledge Base for more information
 
 The following settings are required to connect to the API.
 
-| Setting               | Description                                   | Mandatory   |
-| --------------------- | --------------------------------------------- | ----------- |
-| BaseUrl               | The URL to the AFAS environment REST services | Yes         |
-| ApiKey                | The AppConnector token to connect to AFAS     | Yes         |
-| Update Employee when correlating and mapped data differs from data in AFAS  | When toggled, the mapped properties will be updated in the create action (not just correlate). | No         |
-| Toggle debug logging  | When toggled, extra logging is shown. Note that this is only meant for debugging, please switch this off when in production. | No         |
+| Setting                     | Description  | Mandatory |
+| --------------------------- | -----------  | --------- |
+| Base Uri                    | The URL to the AFAS environment REST services  | Yes       |
+| Token in XML format         | The AppConnector token to connect to AFAS  | Yes       |
+| Get Connector               | The GetConnector in AFAS to query the user with  | Yes       |
+| Update Connector            | The UpdateConnector in AFAS to update the user with  | Yes       |
+| Update on correlate         | When toggled, if the mapped data differs from data in AFAS, the AFAS employee will be updated in the create action (not just correlated). | No        |
+| Toggle debug logging        | When toggled, extra logging is shown. Note that this is only meant for debugging, please switch this off when in production.                                  | No        |
 
 ### Prerequisites
 
