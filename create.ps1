@@ -1,7 +1,7 @@
 #####################################################
 # HelloID-Conn-Prov-Target-AFAS-Profit-Employees-Create
 #
-# Version: 2.1.0 | new-powershell-connector
+# Version: 3.0.0 | new-powershell-connector
 #####################################################
 
 # Set to true at start, because only when an error occurs it is set to false
@@ -176,17 +176,15 @@ catch {
 
     Write-Verbose "Error at Line [$($ex.InvocationInfo.ScriptLineNumber)]: $($ex.InvocationInfo.Line). Error: $($errorMessage.VerboseErrorMessage)"
 
-    $auditLogs.Add([PSCustomObject]@{
-            # Action  = "" # Optional
+    $outputContext.AuditLogs.Add([PSCustomObject]@{
+            Action  = "CorrelateAccount" # Optionally specify a different action for this audit log
             Message = "Error querying AFAS employee where [$($correlationProperty)] = [$($correlationValue)]. Error Message: $($errorMessage.AuditErrorMessage)"
             IsError = $true
         })
-
-    # Skip further actions, as this is a critical error
-    continue
 }
-
-# Check if auditLogs contains errors, if no errors are found, set success to true
-if (-NOT($outputContext.AuditLogs.IsError -contains $true)) {
-    $outputContext.Success = $true
+finally {
+    # Check if auditLogs contains errors, if errors are found, set succes to false
+    if ($outputContext.AuditLogs.IsError -contains $true) {
+        $outputContext.Success = $false
+    }
 }
