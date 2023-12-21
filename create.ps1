@@ -157,18 +157,26 @@ try {
     if ($null -eq $currentAccount.Medewerker) {
         throw "No AFAS employee found AFAS employee where [$($correlationProperty)] = [$($correlationValue)]"
     }
-    $outputContext.AuditLogs.Add([PSCustomObject]@{
-            Action  = "CorrelateAccount" # Optionally specify a different action for this audit log
-            Message = "Correlated account [$($currentAccount.Medewerker)] on field [$($correlationProperty)] with value [$($correlationValue)]"
-            IsError = $false
-        })
 
-    $aRef = [PSCustomObject]@{
-        Medewerker     = $currentAccount.Medewerker
-        Persoonsnummer = $currentAccount.Persoonsnummer
+    if (-Not($actionContext.DryRun -eq $true)) {
+        $outputContext.AuditLogs.Add([PSCustomObject]@{
+                Action  = "CorrelateAccount" # Optionally specify a different action for this audit log
+                Message = "Correlated account [$($currentAccount.Medewerker)] on field [$($correlationProperty)] with value [$($correlationValue)]"
+                IsError = $false
+            })
+
+        $aRef = [PSCustomObject]@{
+            Medewerker     = $currentAccount.Medewerker
+            Persoonsnummer = $currentAccount.Persoonsnummer
+        }
+        $outputContext.AccountCorrelated = $true
+        $outputContext.AccountReference = $aRef
     }
-    $outputContext.AccountCorrelated = $true
-    $outputContext.AccountReference = $aRef
+    else {
+        Write-Warning "DryRun: Would correlate AFAS employee [$($currentAccount.Medewerker)]."
+    }
+
+
 }
 catch {
     $ex = $PSItem
