@@ -160,7 +160,7 @@ try {
 
     if (-Not($actionContext.DryRun -eq $true)) {
         $outputContext.AuditLogs.Add([PSCustomObject]@{
-                Action  = "CorrelateAccount" # Optionally specify a different action for this audit log
+                Action  = "CorrelateAccount"
                 Message = "Correlated account [$($currentAccount.Medewerker)] on field [$($correlationProperty)] with value [$($correlationValue)]"
                 IsError = $false
             })
@@ -185,7 +185,7 @@ catch {
     Write-Verbose "Error at Line [$($ex.InvocationInfo.ScriptLineNumber)]: $($ex.InvocationInfo.Line). Error: $($errorMessage.VerboseErrorMessage)"
 
     $outputContext.AuditLogs.Add([PSCustomObject]@{
-            Action  = "CorrelateAccount" # Optionally specify a different action for this audit log
+            Action  = "CorrelateAccount"
             Message = "Error querying AFAS employee where [$($correlationProperty)] = [$($correlationValue)]. Error Message: $($errorMessage.AuditErrorMessage)"
             IsError = $true
         })

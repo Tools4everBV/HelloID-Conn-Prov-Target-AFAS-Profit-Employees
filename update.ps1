@@ -208,7 +208,7 @@ try {
             Write-Verbose "Error at Line [$($ex.InvocationInfo.ScriptLineNumber)]: $($ex.InvocationInfo.Line). Error: $($errorMessage.VerboseErrorMessage)"
 
             $outputContext.AuditLogs.Add([PSCustomObject]@{
-                    Action  = "UpdateAccount" # Optionally specify a different action for this audit log
+                    Action  = "UpdateAccount"
                     Message = "Error querying AFAS employee where [$($correlationProperty)] = [$($correlationValue)]. Error Message: $($errorMessage.AuditErrorMessage)"
                     IsError = $true
                 })
@@ -286,7 +286,7 @@ try {
                         }
                     
                         $outputContext.AuditLogs.Add([PSCustomObject]@{
-                                Action  = "UpdateAccount" # Optionally specify a different action for this audit log
+                                Action  = "UpdateAccount"
                                 Message = "Successfully updated AFAS employee [$($currentAccount.Medewerker)]. Old values: $($changedPropertiesObject.oldValues | ConvertTo-Json -Depth 10). New values: $($changedPropertiesObject.newValues | ConvertTo-Json -Depth 10)"
                                 IsError = $false
                             })
@@ -302,7 +302,7 @@ try {
                     Write-Verbose "Error at Line '$($ex.InvocationInfo.ScriptLineNumber)': $($ex.InvocationInfo.Line). Error: $($errorMessage.VerboseErrorMessage)"
             
                     $outputContext.AuditLogs.Add([PSCustomObject]@{
-                            Action  = "UpdateAccount" # Optionally specify a different action for this audit log
+                            Action  = "UpdateAccount"
                             Message = "Error updating AFAS employee [$($currentAccount.Medewerker)]. Error Message: $($errorMessage.AuditErrorMessage). Old values: $($changedPropertiesObject.oldValues | ConvertTo-Json -Depth 10). New values: $($changedPropertiesObject.newValues | ConvertTo-Json -Depth 10)"
                             IsError = $true
                         })
@@ -321,7 +321,7 @@ try {
                     }
 
                     $outputContext.AuditLogs.Add([PSCustomObject]@{
-                            Action  = "UpdateAccount" # Optionally specify a different action for this audit log
+                            Action  = "UpdateAccount"
                             Message = "No changes needed for AFAS employee [$($currentAccount.Medewerker)]"
                             IsError = $false
                         })
