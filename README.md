@@ -6,6 +6,10 @@ Repository for HelloID Provisioning Target Connector to AFAS Employees
 <a href="https://github.com/Tools4everBV/HelloID-Conn-Prov-Target-AFAS-Profit-Employees/issues"><img src="https://img.shields.io/github/issues/Tools4everBV/HelloID-Conn-Prov-Target-AFAS-Profit-Employees" alt="Issues Badge"/></a>
 <a href="https://github.com/Tools4everBV/HelloID-Conn-Prov-Target-AFAS-Profit-Employees/graphs/contributors"><img alt="GitHub contributors" src="https://img.shields.io/github/contributors/Tools4everBV/HelloID-Conn-Prov-Target-AFAS-Profit-Employees?color=2b9348"></a>
 
+| :warning: Warning |
+| :---------------- |
+| This script is for the new powershell connector. Make sure to use the mapping and correlation keys like mentionded in this readme. For more information, please read our [documentation](https://docs.helloid.com/en/provisioning/target-systems/powershell-v2-target-systems.html) |
+
 
 | :information_source: Information |
 |:---------------------------|
@@ -27,6 +31,8 @@ Repository for HelloID Provisioning Target Connector to AFAS Employees
       - [Remarks](#remarks)
       - [Scope](#scope)
     - [UpdateConnector](#updateconnector)
+    - [Mapping](#mapping)
+    - [Correlation](#correlation)
   - [Getting help](#getting-help)
   - [HelloID docs](#helloid-docs)
 
@@ -39,9 +45,9 @@ The HelloID connector consists of the template scripts shown in the following ta
 
 | Action                          | Action(s) Performed   | Comment   | 
 | ------------------------------- | --------------------- | --------- |
-| create.ps1                      | Update AFAS employee  |           |
-| update.ps1                      | Update AFAS employee  |           |
-| delete.ps1                      | Update AFAS employee  | Clear the unique fields, since the values have to be unique over all AFAS environments  |
+| create.ps1                      | Update AFAS employee  | Correlates AFAS employee |
+| update.ps1                      | Update AFAS employee  | Update on correlate and update on update |
+| delete.ps1                      | Update AFAS employee  | Clear the unique fields, since the values have to be unique over all AFAS environments |
 
 <!-- GETTING STARTED -->
 ## Getting Started
@@ -67,7 +73,7 @@ The following settings are required to connect to the API.
 | Token in XML format         | The AppConnector token to connect to AFAS  | Yes       |
 | Get Connector               | The GetConnector in AFAS to query the user with  | Yes       |
 | Update Connector            | The UpdateConnector in AFAS to update the user with  | Yes       |
-| Update on correlate         | When toggled, if the mapped data differs from data in AFAS, the AFAS employee will be updated in the create action (not just correlated). | No        |
+| Update on update         | When toggled, if the mapped data differs from data in AFAS, the AFAS user will be updated when a update is triggerd. | No        |
 | Toggle debug logging        | When toggled, extra logging is shown. Note that this is only meant for debugging, please switch this off when in production.                                  | No        |
 
 ### Prerequisites
@@ -80,7 +86,7 @@ The following settings are required to connect to the API.
 ### GetConnector
 When the connector is defined as target system, only the following GetConnector is used by HelloID:
 
-*	Tools4ever - HelloID - T4E_HelloID_Users_v2
+* Tools4ever - HelloID - T4E_HelloID_Users_v2
 
 #### Remarks
  - In view of GDPR, the persons private data, such as private email address and birthdate are not in the data collection by default. When needed for the implementation (e.g. set emailaddress with private email address on delete), these properties will have to be added.
@@ -97,7 +103,29 @@ The data collection can be changed by the customer itself to meet their requirem
 ### UpdateConnector
 In addition to use to the above get-connector, the connector also uses the following build-in Profit update-connectors:
 
-*	knEmployee
+* knEmployee
+
+### Mapping
+The mandatory and recommended field mapping is listed below.
+
+| Name           | Create | Enable | Update | Disable | Delete | Store in account data | Default mapping                            | Mandatory | Comment                                        |
+| -------------- | ------ | ------ | ------ | ------- | ------ | --------------------- | ------------------------------------------ | --------- | ---------------------------------------------- |
+| Medewerker     | X      |        | X      |         |        | Yes                   | Field: ExternalId                          | Yes       | Used for Correlation and to store account data |
+| Persoonsnummer | X      |        | X      |         |        | Yes                   | None                                       | Yes       | Used to store account data                     |
+| EmAd           |        |        | X      |         | X      | Yes                   | Update: Complex EmAd.js Delete Fixed empty |           | E-Mail werk                                    |
+
+The fields listed below are examples of available fields for mapping but are typically not used.
+
+| Name        | Create | Enable | Update | Disable | Delete | Store in account data | Default mapping                        | Mandatory | Comment                                                                |
+| ----------- | ------ | ------ | ------ | ------- | ------ | --------------------- | -------------------------------------- | --------- | ---------------------------------------------------------------------- |
+| EmailPortal |        |        | X      |         | X      | Yes                   | <Your preferred value> for example UPN |           | E-mail toegang - Check with AFAS Administrator if this needs to be set |
+| TeNr        |        |        | X      |         | X      | Yes                   | <Your preferred value>                 |           | Telefoonnr. werk                                                       |
+| MbNr        |        |        | X      |         | X      | Yes                   | <Your preferred value>                 |           | Mobiel werk                                                            |
+
+
+### Correlation
+It is mandatory to enable the correlation in the correlation tab. The default value for "person correlation field" is " ExternalId". The default value for "Account Correlation field" is "Medewerker".
+
 
 ## Getting help
 > _For more information on how to configure a HelloID PowerShell connector, please refer to our [documentation](https://docs.helloid.com/hc/en-us/articles/360012558020-Configure-a-custom-PowerShell-target-system) pages_

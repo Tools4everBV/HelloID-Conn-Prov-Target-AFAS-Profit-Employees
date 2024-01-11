@@ -42,13 +42,13 @@
     }
   },
   {
-    "key": "updateOnCorrelate",
+    "key": "updateOnUpdate",
     "type": "checkbox",
     "defaultValue": false,
     "templateOptions": {
-      "label": "Update on correlate",
+      "label": "Update on update",
       "required": false,
-      "description": "When toggled, if the mapped data differs from data in AFAS, the AFAS employee will be updated in the create action (not just correlated)."
+      "description": "When toggled, if the mapped data differs from data in AFAS, the AFAS user will be updated when a update is triggerd"
     }
   },
   {
