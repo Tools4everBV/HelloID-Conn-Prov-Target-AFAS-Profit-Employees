@@ -339,6 +339,7 @@ try {
     }
     else {
         $previousAccount = $account
+        Write-Verbose "The configuration parameter update on update is [$($actionContext.Configuration.updateOnUpdate)]"
     }
 }
 catch {
