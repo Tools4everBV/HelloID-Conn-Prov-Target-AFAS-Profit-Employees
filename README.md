@@ -22,6 +22,7 @@
     - [Remarks](#remarks)
       - [Scope](#scope)
   - [Setup the connector](#setup-the-connector)
+    - [Updating a custom field for AFAS employee](#updating-a-custom-field-for-afas-employee)
   - [Getting help](#getting-help)
   - [HelloID docs](#helloid-docs)
 
@@ -137,6 +138,45 @@ The data collection can be changed by the customer itself to meet their requirem
 
 > [!TIP]
 > `EmailPortal` is typically set on the AFAS user. We have a separate [target connector](https://github.com/Tools4everBV/HelloID-Conn-Prov-Target-AFAS-Profit-Users) for managing AFAS users 
+
+### Updating a custom field for AFAS employee
+In certain situations, you want to write certain information back to a custom field in AFAS. The example below explains how to add this to the code.
+
+For more information about updating a custom field for AFAS employees. Please check the [AFAS documentation](https://help.afas.nl/help/NL/SE/App_Cnnctr_Update_050.htms)
+
+```powershell
+$updateAccount = [PSCustomObject]@{
+    'AfasEmployee' = @{
+        'Element' = @{
+            '@EmId'   = $currentAccount.Medewerker
+            'Fields'  = @{ 
+                '<YOUR GUID FROM AFAS>' = $account.yourMappedFieldName
+            }
+            'Objects' = @(@{
+                    'KnPerson' = @{
+                        'Element' = @{
+                            'Fields' = @{
+                                # Zoek op BcCo (Persoons-ID)
+                                'MatchPer' = 0
+                                # Nummer
+                                'BcCo'     = $currentAccount.Persoonsnummer
+                            }
+                        }
+                    }
+                })
+        }
+    }
+}
+```
+> [!TIP]
+> Because mapped values are typically added in the body of 'KnPerson' you need to remove `yourMappedFieldName` from  `$account` after adding it to the `$AfasEmployee` body. Example:
+
+```powershell
+  if ($account.PSObject.Properties.Name -Contains 'yourMappedFieldName') {
+      $account.PSObject.Properties.Remove('yourMappedFieldName')
+  }
+```
+
 
 ## Getting help
 
