@@ -168,7 +168,7 @@ $updateAccount = [PSCustomObject]@{
     }
 }
 ```
-> [!TIP]
+> [!NOTE]
 > Because mapped values are typically added in the body of 'KnPerson' you need to remove `yourMappedFieldName` from  `$account` after adding it to the `$AfasEmployee` body. Example:
 
 ```powershell
@@ -177,6 +177,8 @@ $updateAccount = [PSCustomObject]@{
   }
 ```
 
+> [!TIP]
+> If you need more information please check out our [forum post](https://forum.helloid.com/forum/helloid-provisioning/1261-updating-a-custom-field-for-afas-employee).
 
 ## Getting help
 
