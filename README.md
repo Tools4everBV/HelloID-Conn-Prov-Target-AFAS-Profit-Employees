@@ -144,13 +144,15 @@ In certain situations, you want to write certain information back to a custom fi
 
 For more information about updating a custom field for AFAS employees. Please check the [AFAS documentation](https://help.afas.nl/help/NL/SE/App_Cnnctr_Update_050.htms)
 
+If you want to compare the custom field with your field mapping. The custom field needs to be added to the `T4E_HelloID_Users_v2` GetConnector,
+
 ```powershell
 $updateAccount = [PSCustomObject]@{
     'AfasEmployee' = @{
         'Element' = @{
             '@EmId'   = $currentAccount.Medewerker
             'Fields'  = @{ 
-                '<YOUR GUID FROM AFAS>' = $account.yourMappedFieldName
+                '<YOUR GUID / UUID CODE FROM AFAS>' = $account.fieldNameAFAS
             }
             'Objects' = @(@{
                     'KnPerson' = @{
@@ -169,13 +171,40 @@ $updateAccount = [PSCustomObject]@{
 }
 ```
 > [!NOTE]
-> Because mapped values are typically added in the body of 'KnPerson' you need to remove `yourMappedFieldName` from  `$account` after adding it to the `$AfasEmployee` body. Example:
+> Because mapped values are typically added in the body of 'KnPerson' you need to skip the `$account.fieldNameAFAS` from adding it to the `$AfasEmployee` body. Also, you need to add the field to `$updateAccountFields` and `$previousAccount`. Example:
 
 ```powershell
-  if ($account.PSObject.Properties.Name -Contains 'yourMappedFieldName') {
-      $account.PSObject.Properties.Remove('yourMappedFieldName')
-  }
+$updateAccountFields = @()
+if ($account.PSObject.Properties.Name -Contains 'fieldNameAFAS') {
+    $updateAccountFields += "fieldNameAFAS"
+}
 ```
+
+```powershell
+# Retrieve current account data for properties to be updated
+$previousAccount = [PSCustomObject]@{
+    # E-Mail werk  
+    'EmAd'        = $currentAccount.Email_werk
+    # E-mail toegang
+    'EmailPortal' = $currentAccount.Email_portal
+    # Telefoonnr. werk
+    'TeNr'        = $currentAccount.Telefoonnr_werk
+    # Mobiel werk
+    'MbNr'        = $currentAccount.Mobielnr_werk
+    # Overtime
+    'fieldNameAFAS'    = $currentAccount.Overtime
+}
+```
+
+```powershell
+foreach ($newProperty in $newProperties ) {
+    if ($newProperty.name -ne 'fieldNameAFAS') {
+        $updateAccount.AfasEmployee.Element.Objects[0].KnPerson.Element.Fields.$($newProperty.Name) = $newProperty.Value
+    }                 
+}
+```
+
+
 
 > [!TIP]
 > If you need more information please check out our [forum post](https://forum.helloid.com/forum/helloid-provisioning/1261-updating-a-custom-field-for-afas-employee).
