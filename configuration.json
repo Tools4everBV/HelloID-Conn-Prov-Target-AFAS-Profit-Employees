@@ -48,7 +48,7 @@
     "templateOptions": {
       "label": "Only update on correlate",
       "required": false,
-      "description": "When toggled, the AFAS user will only be updated when the account is correlated"
+      "description": "When toggled, the AFAS employee will only be updated when the account is correlated"
     }
   },
   {
