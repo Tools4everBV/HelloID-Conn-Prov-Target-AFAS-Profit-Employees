@@ -1,7 +1,6 @@
 #####################################################
 # HelloID-Conn-Prov-Target-AFAS-Profit-Employees-Delete
-#
-# Version: 3.0.0 | new-powershell-connector
+# PowerShell V2
 #####################################################
 
 # Set to true at start, because only when an error occurs it is set to false
