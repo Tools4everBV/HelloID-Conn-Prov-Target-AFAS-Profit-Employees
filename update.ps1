@@ -142,7 +142,7 @@ try {
         throw 'The account reference could not be found'
     }
     
-    if (($actionContext.Configuration.onlyUpdateOnCorrelate -eq $true) -or ($actionContext.AccountCorrelated -eq $true)) {
+    if (($actionContext.Configuration.onlyUpdateOnCorrelate -eq $false) -or ($actionContext.AccountCorrelated -eq $true)) {
         # Get current account and verify if there are changes
         try {
             Write-Verbose "Querying AFAS employee where [$($correlationProperty)] = [$($correlationValue)]"
@@ -338,7 +338,7 @@ try {
     }
     else {
         $previousAccount = $account
-        Write-Verbose "The configuration parameter update on update is [$($actionContext.Configuration.onlyUpdateOnCorrelate)]"
+        Write-Verbose "The configuration parameter only update on correlate is [$($actionContext.Configuration.onlyUpdateOnCorrelate)]"
     }
 }
 catch {
