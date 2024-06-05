@@ -35,10 +35,10 @@ if ($actionContext.CorrelationConfiguration.Enabled) {
 }
 else {
     $outputContext.AuditLogs.Add([PSCustomObject]@{
-            Message = "Configuration of correlation is madatory."
+            Message = "Configuration of correlation is mandatory."
             IsError = $true
         })
-    Throw "Configuration of correlation is madatory."
+    Throw "Configuration of correlation is mandatory."
 }
 
 #region functions
