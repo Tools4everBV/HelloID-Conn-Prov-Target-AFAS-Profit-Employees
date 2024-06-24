@@ -1,7 +1,6 @@
 #####################################################
 # HelloID-Conn-Prov-Target-AFAS-Profit-Employees-Delete
-#
-# Version: 3.0.0 | new-powershell-connector
+# PowerShell V2
 #####################################################
 
 # Set to true at start, because only when an error occurs it is set to false
@@ -15,35 +14,6 @@ switch ($($actionContext.Configuration.isDebug)) {
 
 # Enable TLS1.2
 [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor [System.Net.SecurityProtocolType]::Tls12
-
-$account = $actionContext.Data
-
-$correlationProperty = $actionContext.CorrelationConfiguration.accountField
-$correlationValue = $actionContext.References.Account.Medewerker # Has to match the AFAS value of the specified filter field ($filterfieldid)
-
-if ([string]::IsNullOrEmpty($correlationProperty)) {
-    Write-Warning "Correlation is enabled but not configured correctly."
-    Throw "Correlation is enabled but not configured correctly."
-}
-
-if ([string]::IsNullOrEmpty($correlationValue)) {
-    Write-Warning "The correlation value for [$correlationProperty] is empty. Account Refference is empty."
-    Throw "The correlation value for [$correlationProperty] is empty. Account Refference is empty."
-}
-
-$updateAccountFields = @()
-if ($account.PSObject.Properties.Name -Contains 'EmAd') {
-    $updateAccountFields += "EmAd"
-}
-if ($account.PSObject.Properties.Name -Contains 'EmailPortal') {
-    $updateAccountFields += "EmailPortal"
-}
-if ($account.PSObject.Properties.Name -Contains 'TeNr') {
-    $updateAccountFields += "TeNr"
-}
-if ($account.PSObject.Properties.Name -Contains 'MbNr') {
-    $updateAccountFields += "MbNr"
-}
 
 #region functions
 function Resolve-HTTPError {
@@ -141,6 +111,37 @@ function Get-ErrorMessage {
 
 # Get current account and verify if there are changes
 try {
+    $account = $actionContext.Data
+
+    $correlationProperty = $actionContext.CorrelationConfiguration.accountField
+    $correlationValue = $actionContext.References.Account.Medewerker # Has to match the AFAS value of the specified filter field ($filterfieldid)
+      
+    $updateAccountFields = @()
+    if ($account.PSObject.Properties.Name -Contains 'EmAd') {
+        $updateAccountFields += "EmAd"
+    }
+    if ($account.PSObject.Properties.Name -Contains 'EmailPortal') {
+        $updateAccountFields += "EmailPortal"
+    }
+    if ($account.PSObject.Properties.Name -Contains 'TeNr') {
+        $updateAccountFields += "TeNr"
+    }
+    if ($account.PSObject.Properties.Name -Contains 'MbNr') {
+        $updateAccountFields += "MbNr"
+    }
+
+    # Verify if [aRef] has a value
+    if ([string]::IsNullOrEmpty($($actionContext.References.Account))) {
+        $outputContext.AuditLogs.Add([PSCustomObject]@{
+                Action  = "UpdateAccount"
+                Message = "The account reference could not be found"
+                IsError = $true
+            })
+            
+        throw 'The account reference could not be found'
+    }
+
+
     try {
         Write-Verbose "Querying AFAS employee where [$($correlationProperty)] = [$($correlationValue)]"
 
@@ -218,7 +219,7 @@ try {
         }
 
         # Skip further actions, as this is a critical error
-        continue
+        throw "Error querying AFAS employee"
     }
 
     switch ($updateAction) {
@@ -310,8 +311,9 @@ try {
                         Message = "Error updating AFAS employee [$($currentAccount.Medewerker)]. Error Message: $($errorMessage.AuditErrorMessage). Old values: $($changedPropertiesObject.oldValues | ConvertTo-Json -Depth 10). New values: $($changedPropertiesObject.newValues | ConvertTo-Json -Depth 10)"
                         IsError = $true
                     })
+                # Skip further actions, as this is a critical error
+                throw "Error updating AFAS employee"
             }
-
             break
         }
         'NoChanges' {
@@ -337,6 +339,10 @@ try {
             break
         }
     }
+}
+catch {
+    $ex = $PSItem
+    Write-Verbose "ERROR: $ex"
 }
 finally {
     # Check if auditLogs contains errors, if errors are found, set succes to false

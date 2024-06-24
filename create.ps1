@@ -1,7 +1,6 @@
 #####################################################
 # HelloID-Conn-Prov-Target-AFAS-Profit-Employees-Create
-#
-# Version: 3.0.0 | new-powershell-connector
+# PowerShell V2
 #####################################################
 
 # Set to true at start, because only when an error occurs it is set to false
@@ -18,28 +17,6 @@ switch ($($actionContext.Configuration.isDebug)) {
 
 # Enable TLS1.2
 [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor [System.Net.SecurityProtocolType]::Tls12
-
-if ($actionContext.CorrelationConfiguration.Enabled) {
-    $correlationProperty = $actionContext.CorrelationConfiguration.accountField
-    $correlationValue = $actionContext.CorrelationConfiguration.accountFieldValue
-
-    if ([string]::IsNullOrEmpty($correlationProperty)) {
-        Write-Warning "Correlation is enabled but not configured correctly."
-        Throw "Correlation is enabled but not configured correctly."
-    }
-
-    if ([string]::IsNullOrEmpty($correlationValue)) {
-        Write-Warning "The correlation value for [$correlationProperty] is empty. This is likely a scripting issue."
-        Throw "The correlation value for [$correlationProperty] is empty. This is likely a scripting issue."
-    }
-}
-else {
-    $outputContext.AuditLogs.Add([PSCustomObject]@{
-            Message = "Configuration of correlation is mandatory."
-            IsError = $true
-        })
-    Throw "Configuration of correlation is mandatory."
-}
 
 #region functions
 function Resolve-HTTPError {
@@ -137,6 +114,28 @@ function Get-ErrorMessage {
 
 # Get current account and verify if there are changes
 try {
+    if ($actionContext.CorrelationConfiguration.Enabled) {
+        $correlationProperty = $actionContext.CorrelationConfiguration.accountField
+        $correlationValue = $actionContext.CorrelationConfiguration.accountFieldValue
+    
+        if ([string]::IsNullOrEmpty($correlationProperty)) {
+            Write-Warning "Correlation is enabled but not configured correctly."
+            Throw "Correlation is enabled but not configured correctly."
+        }
+    
+        if ([string]::IsNullOrEmpty($correlationValue)) {
+            Write-Warning "The correlation value for [$correlationProperty] is empty. This is likely a scripting issue."
+            Throw "The correlation value for [$correlationProperty] is empty. This is likely a scripting issue."
+        }
+    }
+    else {
+        $outputContext.AuditLogs.Add([PSCustomObject]@{
+                Message = "Configuration of correlation is madatory."
+                IsError = $true
+            })
+        Throw "Configuration of correlation is madatory."
+    }
+
     Write-Verbose "Querying AFAS employee where [$($correlationProperty)] = [$($correlationValue)]"
 
     # Create authorization headers
