@@ -22,11 +22,31 @@
     }
   },
   {
+    "key": "GETConnector",
+    "type": "input",
+    "defaultValue": "",
+    "templateOptions": {
+      "label": "GET-Connector",
+      "required": true
+    }
+  },
+  {
+    "key": "RelationNumber",
+    "type": "input",
+    "defaultValue": "",
+    "templateOptions": {
+      "label": "Relation number",
+      "placeholder": "*****",
+      "required": true
+    }
+  },
+  {
     "key": "FilterfieldName",
     "type": "select",
     "defaultValue": "Persoonsnummer",
     "templateOptions": {
       "label": "Identify employees by:",
+      "description": "Specify the field that is used for the ExternalID.",
       "options": [
         {
           "value": "Persoonsnummer",
