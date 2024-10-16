@@ -1,211 +1,214 @@
-#region Config
-$Config = $Configuration | ConvertFrom-Json
+#region functions
+Function Format-TargetURL {
+    [CmdletBinding(DefaultParameterSetName = 'String')]
+    [OutputType([System.Uri])]
+    param (
+        [Parameter(Mandatory, ParameterSetName = 'String', Position = 0)]
+        [String]
+        $Url,
 
-$BaseUri = $Config.BaseUri.TrimEnd('/')
-$Token = $Config.Token
+        [Parameter(Mandatory, ParameterSetName = 'Uri', Position = 0)]
+        [System.Uri]
+        $Uri,
 
-$GetConnector = "T4E_HelloID_Users"
-$UpdateConnector = "KnEmployee"
-#endregion Config
+        [Parameter(Position = 1)]
+        [String]
+        $Endpoint
+    )
 
-#region default properties
-$p = $Person | ConvertFrom-Json
-#$m = $Manager | ConvertFrom-Json
+    if ($PsCmdlet.ParameterSetName -eq 'String') {
+        $Uri = $Null
+        
+        if ([System.Uri]::TryCreate($Url, 'RelativeOrAbsolute', [ref]$Uri)) {
+            if ([String]::IsNullOrEmpty($Uri.Scheme)) {
+                $Uri = [System.Uri]::new(
+                    "https://$($Uri.OriginalString)"
+                )
+            }
+        }
+        else {
+            Throw "Invalid URL configured: '$($Url)'"
+        }
+    }
 
-$aRef = $AccountReference | ConvertFrom-Json
-#$mRef = $ManagerAccountReference | ConvertFrom-Json
+    if (-not [String]::IsNullOrEmpty($Endpoint)) {
+        $PathSegment = @(
+            $Uri.AbsolutePath.TrimEnd('/')
+            $EndPoint.TrimStart('/')
+        ) -join '/'
 
-$Success = $False
-$AuditLogs = [Collections.Generic.List[PSCustomObject]]::new()
-#endregion default properties
+        $Uri = [System.Uri]::new(
+            $Uri,
+            $PathSegment
+        )
+    }
 
-$FilterfieldName = $Config.FilterfieldName
-$FilterValue = $aRef.$FilterfieldName # Has to match the AFAS value of the specified filter field ($FilterfieldName)
-
-# Set TLS to accept TLS 1.1 and TLS 1.2
-[Net.ServicePointManager]::SecurityProtocol = @(
-    [Net.SecurityProtocolType]::Tls11
-    [Net.SecurityProtocolType]::Tls12
-)
-
-# The new account variables
-$Account = @{
-    # E-Mail toegang - Check with AFAS Administrator if this needs to be set
-    'EmailPortal' = $p.Accounts.MicrosoftActiveDirectory.userPrincipalName
-
-    # E-Mail werk
-    'EmAd'        = $p.Accounts.MicrosoftActiveDirectory.mail
-
-    # phone.business.fixed
-    # 'TeNr' = $p.Accounts.MicrosoftActiveDirectory.telephoneNumber
-
-    # phone.business.mobile
-    # 'MbNr' = $p.Accounts.MicrosoftActiveDirectory.mobile
+    return $Uri
 }
+#endregion functions
 
-# Start Script
+#region script
 try {
-    $EncodedToken = [System.Convert]::ToBase64String(
-        [System.Text.Encoding]::ASCII.GetBytes($Token))
+    # Set TLS to accept TLS 1.2
+    [Net.ServicePointManager]::SecurityProtocol = @(
+        [Net.SecurityProtocolType]::Tls12
+    )
 
-    $RestMethod = @{
-        UseBasicParsing = $True
+    $EncodedToken = [System.Convert]::ToBase64String(
+        [System.Text.Encoding]::ASCII.GetBytes($ActionContext.Configuration.Token)
+    )
+
+    #Build Base AFAS request splattable object
+    $AFASRequests = @{
         ContentType     = "application/json;charset=utf-8"
         Headers         = @{
             Authorization = "AfasToken $($EncodedToken)"
         }
     }
 
-    # Fetch Employee from AFAS
-    $Uri = "$($BaseUri)/connectors/$($GetConnector)"
+    #BaseUri to execute requests with connectors
+    $ConnectorBaseUri = Format-TargetURL -Url $ActionContext.Configuration.BaseUri -Endpoint 'connectors'
 
-    $AFASEmployee = Invoke-RestMethod @RestMethod -Method 'Get' -Uri $Uri -Body @{
-        filterfieldids = $FilterfieldName
-        filtervalues   = $FilterValue
-        operatortypes  = 1
-    } | Select-Object -ExpandProperty 'rows'
+    #Correlate on Gebruiker field because thats the accountreference of the system
+    $CorrelationField = 'Medewerker'
 
-    # Validating that we only get one user
-    if ($AFASEmployee.Count -eq 0) {
-        throw "No user found where field '$FilterfieldName' has value '$FilterValue'"
-    }
+    $CorrelationRequestLog = "`"$($CorrelationField) -eq '$($actionContext.References.Account)'`""
 
-    if ($AFASEmployee.Count -ge 2) {
-        throw "Multiple users found where field '$FilterfieldName' has value '$FilterValue'"
-    }
-
-    # Retrieve current account data for properties to be updated
-    $PreviousAccount = @{
-        # E-Mail toegang
-        'EmailPortal' = $AFASEmployee.Email_werk_gebruiker
-        # E-Mail werk
-        'EmAd'        = $AFASEmployee.Email_werk
-        # phone.business.fixed
-        'TeNr'        = $AFASEmployee.Telefoonnr_werk
-        # phone.business.mobile
-        'MbNr'        = $AFASEmployee.Mobielnr_werk
-        # Zoeknaam
-        'SeNm'        = ''
-        # Fax werk
-        'FaNr'        = ''
-    }
-
-    # Fill the UpdatedFields with all changed values
-    $UpdatedFields = @{}
-
-    foreach ($Key in $Account.Keys.Clone()) {
-        # Make sure all the keys in the $Account exits in the $PreviousAccount
-        if (-Not $PreviousAccount.ContainsKey($Key)) {
-            throw "The previous account doesn't contain the key '$Key', aborting..."
-        }
-
-        # Make empty values null in $Account
-        if ([string]::IsNullOrWhiteSpace($Account[$Key])) {
-            $Account[$Key] = $Null
-        }
-
-        if ($PreviousAccount[$Key] -ne $Account[$Key]) {
-            $UpdatedFields.Add($Key, $Account[$Key])
-
-            Write-Information "Updating field $($Key) '$($PreviousAccount[$Key])' with new value '$($Account[$Key])'"
+    #Query employee record
+    $GetEmployeeRequest = @{
+        Uri    = Format-TargetURL -Uri $ConnectorBaseUri -Endpoint $ActionContext.Configuration.GETConnector
+        Method = 'GET'
+        Body = @{
+            filterfieldids = $CorrelationField
+            filtervalues   = $ActionContext.References.Account
+            operatortypes  = 1
         }
     }
 
-    # Only keep the keys defined in the account
-    $PreviousAccount = $PreviousAccount | Select-Object -Property ([string[]]$Account.Keys)
-    $Account = [PSCustomObject]$Account
+    $AFASEmployeeRows = (Invoke-RestMethod @AFASRequests @GetEmployeeRequest).rows
 
-    # Only if something changed, we send an update to AFAS.
-    if ($UpdatedFields.count -gt 0) {
-        Write-Verbose -Verbose "There is something to update"
-
-        # This is the boilerplate for the update, we will fill it with the correct data after.
-        $Template = '{"AfasEmployee":{"Element":{"Objects":[{"KnPerson":{"Element":{"Fields":{}}}}],"@EmId":null}}}' | ConvertFrom-Json
-
-        # Set employee ID
-        $Template.AfasEmployee.Element.'@EmId' = $AFASEmployee.Medewerker
-
-        # Reference to the KnPerson Fields property
-        $Fields = $Template.AfasEmployee.Element.Objects[0].KnPerson.Element.Fields
-
-        # Set the default update properties
-        $Fields | Add-Member -NotePropertyMembers @{
-            # Zoek op BcCo (Persoons-ID)
-            'MatchPer' = 0
-            # Persoons-ID
-            'BcCo'     = $AFASEmployee.Persoonsnummer
-        }
-
-        # Set the updated properties
-        $Fields | Add-Member -NotePropertyMembers $UpdatedFields
-
-        if (-Not ($DryRun -eq $True)) {
-            $Uri = "$($BaseUri)/connectors/$($UpdateConnector)"
-            $Body = $Template | ConvertTo-Json -Depth 10 -Compress
-
-            [void] (Invoke-RestMethod @RestMethod -Method 'Put' -Uri $Uri -Body $Body)
-        }
-        else {
-            # For the dryrun, we dump the body in the verbose logging
-            Write-Verbose -Verbose (
-                $Template | ConvertTo-Json -Depth 10
-            )
-        }
-
-        Write-Verbose -Verbose "Updated person"
+    #Handle retrieved entries
+    if ($AFASEmployeeRows.count -eq 0) {
+        Throw "Could not find employee record in GET-Connector '$($ActionContext.Configuration.GETConnector)' based on correlation request $($CorrelationRequestLog)"
+    }
+    elseif ($AFASEmployeeRows.Count -gt 1) {
+        Throw "Retrieved $($AFASEmployeeRows.Count) employee entries in GET-Connector '$($actionContext.Configuration.GETConnector)' based on correlation request $($CorrelationRequestLog)"
     }
     else {
-        Write-Verbose -Verbose "Nothing to update"
+        Write-verbose -verbose "Correlated $($AFASEmployeeRows.Count) employee entry in GET-Connector '$($actionContext.Configuration.GETConnector)' based on correlation request $($CorrelationRequestLog)"
+        
+        $AFASEmployee = $AFASEmployeeRows | Select-Object -First 1
+
+        $ActionContext.Data | Add-Member -Force -MemberType 'NoteProperty' -Name 'BcCo' -Value $AFASEmployee.Persoonsnummer
+
+        if ('Persoonsnummer' -in $ActionContext.Data.PSObject.Properties.Name) {
+            $OutputContext.Data.Persoonsnummer = $AFASEmployee.Persoonsnummer
+        }
+
+        if ('Medewerker' -in $ActionContext.Data.PSObject.Properties.Name) {
+            $OutputContext.Data.Medewerker = $AFASEmployee.Medewerker
+        }
+
+        $PreviousData = @{
+            EmailPortal = $AFASEmployee.Email_werk_gebruiker
+            EmAd        = $AFASEmployee.Email_werk
+            TeNr        = $AFASEmployee.Telefoonnr_werk
+            MbNr        = $AFASEmployee.Mobielnr_werk
+            BcCo        = $AFASEmployee.Persoonsnummer
+        }
+
+        $OutputContext.PreviousData | Add-Member -Force -NotePropertyMembers $PreviousData
+
+        #Set account reference and correlation status
+        $OutputContext.AccountReference = $AFASEmployee.Medewerker
     }
 
-    $PreviousAccount | Add-Member -NotePropertyMembers @{
-        Medewerker     = $aRef.Medewerker
-        Persoonsnummer = $aRef.Persoonsnummer
+    #Calculate updateable fields
+    $UpdatableFields = $ActionContext.Data.PSObject.Properties.Name | Where-Object {
+        $_ -in $PreviousData.GetEnumerator().Name -and
+        $_ -notin @(
+            'Persoonsnummer'
+            'Medewerker'
+        )
     }
 
-    $Account | Add-Member -NotePropertyMembers @{
-        Medewerker     = $AFASEmployee.Medewerker
-        Persoonsnummer = $AFASEmployee.Persoonsnummer
+    #Compare data
+    $ComparisonRequest = @{
+        ReferenceObject  = $OutputContext.PreviousData
+        DifferenceObject = $ActionContext.Data
+        Property         = $UpdatableFields
     }
 
-    # Set aRef object for use in futher actions
-    $aRef = [PSCustomObject]@{
-        Medewerker     = $AFASEmployee.Medewerker
-        Persoonsnummer = $AFASEmployee.Persoonsnummer
+    $Comparison = Compare-Object @ComparisonRequest
+
+    if ($Null -ne $Comparison) {
+        $Fields = [PSCustomObject]@{
+            MatchPer = 0
+            BcCo     =  $AFASEmployee.Persoonsnummer
+        }
+
+        $ActionContext.Data.PSObject.Properties | Where-Object {
+            $_.Name -in $UpdatableFields
+        } | ForEach-Object {
+            $Fields | Add-Member -Force -MemberType 'NoteProperty' -Name $_.Name -Value $_.Value
+        }
+
+        #Splat the KnEmployee creation request
+        $PutKnEmployeeRequest = @{
+            Uri    = Format-TargetURL -Uri $ConnectorBaseUri -Endpoint 'knEmployee'
+            Method = 'PUT'
+            Body   = [PSCustomObject]@{
+                AfasEmployee = @{
+                    Element = @{
+                        Objects = @(
+                            @{
+                                KnPerson = @{
+                                    Element = [PSCustomObject]@{
+                                        Fields = $Fields
+                                    }
+                                }
+                            }
+                        )
+                        '@EmId' = $ActionContext.References.Account
+                    }
+                }
+            }
+        }
+
+        #If dryrun is true dont execute, but return logging
+        if ($ActionContext.DryRun -eq $false) {
+            $PutKnEmployeeRequest.Body = ConvertTO-Json -InputObject $PutKnEmployeeRequest.Body -Depth 10 -Compress
+
+            [void] (Invoke-RestMethod @AFASRequests @PutKnEmployeeRequest)
+        }
+        else {
+            Write-verbose -verbose "Updated '$($UpdatableFields -join "', '")' KnEmployee: '$($Fields | ConvertTo-Json -Depth 10)' for @EmId: '$($PutKnEmployeeRequest.Body.AfasEmployee.Element.'@EmId')'"
+        }
+
+        #Return the dataobject
+        $OutputContext.Data.PSObject.Properties | Where-Object {
+            $_.Name -in $Fields.PSObject.Properties.Name
+        } | ForEach-Object {
+            $_.Value = $Fields | Select-Object -ExpandProperty $_.Name
+        }
+
+        $OutputContext.AuditLogs.add([PSCustomObject]@{
+                Action  = 'UpdateAccount'
+                Message = "Updated '$($UpdatableFields -join "', '")' properties for KnEmployee '$($ActionContext.References.Account)' for: '$($personContext.Person.DisplayName)'"
+                IsError = $false
+            }
+        )
     }
 
-    $AuditLogs.Add([PSCustomObject]@{
-            Action  = "UpdateAccount"
-            Message = "Updated fields of account with id $($aRef.Medewerker)"
-            IsError = $false
-        })
-
-    $Success = $true
+    $outputContext.Success = $true
 }
 catch {
-    $AuditLogs.Add([PSCustomObject]@{
-            Action  = "UpdateAccount"
-            Message = "Error updating fields of account with Id $($aRef.Medewerker): $($_)"
-            IsError = $True
-        })
-    Write-Warning $_
+    $OutputContext.AuditLogs.add([PSCustomObject]@{
+            Message = "An exception occured while processing account for '$($PersonContext.Person.DisplayName)': '$($_.Exception.message)'"
+            IsError = $true
+        }
+    )
+        
+    Write-Warning $_.Exception.message
 }
-
-# Send results
-$Result = [PSCustomObject]@{
-    Success          = $Success
-    AccountReference = $aRef
-    AuditLogs        = $AuditLogs
-    Account          = $Account
-    PreviousAccount  = $PreviousAccount
-
-    # Optionally return data for use in other systems
-    ExportData       = [PSCustomObject]@{
-        Medewerker           = $aRef.Medewerker
-        Persoonsnummer       = $aRef.Persoonsnummer
-        BusinessEmailAddress = $Account.EmAd
-        PortalEmailAddress   = $Account.EmailPortal
-    }
-}
-
-Write-Output $Result | ConvertTo-Json -Depth 10
+#endregion script
