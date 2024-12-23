@@ -203,7 +203,7 @@ try {
 
         Write-Verbose "Error at Line [$($ex.InvocationInfo.ScriptLineNumber)]: $($ex.InvocationInfo.Line). Error: $($errorMessage.VerboseErrorMessage)"
 
-        if ($errorMessage.AuditErrorMessage -Like "No AFAS employee found AFAS employee where [$($correlationProperty)] = [$($correlationValue)]") {
+        if ($errorMessage.AuditErrorMessage -Like "No AFAS employee found AFAS employee*") {
             $outputContext.AuditLogs.Add([PSCustomObject]@{
                     Action  = "DeleteAccount"
                     Message = "No AFAS employee found AFAS employee where [$($correlationProperty)] = [$($correlationValue)]. Possibly deleted."
