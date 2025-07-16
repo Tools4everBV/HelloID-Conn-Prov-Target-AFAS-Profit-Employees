@@ -40,8 +40,8 @@ The following lifecycle actions are available:
 | Action             | Description                                                                                                     |
 | ------------------ | --------------------------------------------------------------------------------------------------------------- |
 | create.ps1         | PowerShell _correlate_ lifecycle action. Correlates                                                             |
-| delete.ps1         | PowerShell _delete_ lifecycle action. Update on correlate and update on update                                  |
-| update.ps1         | PowerShell _update_ lifecycle action. Clear the unique fields, since the values have to be unique over all AFAS |
+| update.ps1         | PowerShell _update_ lifecycle action. Update on correlate and update on update                                  |
+| delete.ps1         | PowerShell _delete_ lifecycle action. Clear the unique fields, since the values have to be unique over all AFAS |
 | configuration.json | Default _configuration.json_                                                                                    |
 | fieldMapping.json  | Default _fieldMapping.json_                                                                                     |
 
