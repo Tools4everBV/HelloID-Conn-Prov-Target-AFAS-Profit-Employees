@@ -103,7 +103,6 @@ The following settings are required to connect to the API.
 | Token in XML format           | The AppConnector token to connect to AFAS                                                                                                             | Yes       |
 | Get Connector                 | The GetConnector in AFAS to query the employee with                                                                                                   | Yes       |
 | Update Connector              | The UpdateConnector in AFAS to update the employee with                                                                                               | Yes       |
-| Create account when not found | When toggled, if the employee account is not found, a new the AFAS employee account will be created in the create action (only in the create action). |           |
 | Update on update              | When toggled, if the mapped data differs from data in AFAS, the AFAS employee will be updated when a update is triggerd.                              |           |
 | Toggle debug logging          | When toggled, extra logging is shown. Note that this is only meant for debugging, please switch this off when in production.                          |           |
 
