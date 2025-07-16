@@ -31,6 +31,15 @@
 
 _HelloID-Conn-Prov-Target-AFAS-Profit-Employees is a _target_ connector. _AFAS-Profit-Employees_ provides a interface to communicate with Profit through a set of GetConnectors, which is component that allows the creation of custom views on the Profit data. GetConnectors are based on a pre-defined 'data collection', which is an existing view based on the data inside the Profit database. 
 
+Supported features:
+| Feature                             | Supported | Actions                                                                     | Remarks |
+| ----------------------------------- | --------- | --------------------------------------------------------------------------- | ------- |
+| **Account Lifecycle**               | ✅         | Create, Update, Delete                                                      |         |
+| **Permissions**                     | ❌         | -                                                                           |         |
+| **Resources**                       | ❌         | -                                                                           |         |
+| **Entitlement Import: Accounts**    | ✅         | -                                                                           |         |
+| **Entitlement Import: Permissions** | ❌         | -                                                                           |         |
+
 | Endpoint                      | Description |
 | ----------------------------- | ----------- |
 | profitrestservices/connectors |             |
