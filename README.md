@@ -35,6 +35,17 @@ _HelloID-Conn-Prov-Target-AFAS-Profit-Employees is a _target_ connector. _AFAS-P
 | ----------------------------- | ----------- |
 | profitrestservices/connectors |             |
 
+Supported features:
+| Feature                             | Supported | Actions                                                                     | Remarks |
+| ----------------------------------- | --------- | --------------------------------------------------------------------------- | ------- |
+| **Account Lifecycle**               | ✅         | Create, Update, Delete                                                      |         |
+| **Permissions**                     | ❌         | -                                                                           |         |
+| **Resources**                       | ❌         | -                                                                           |         |
+| **Entitlement Import: Accounts**    | ✅         | -                                                                           |         |
+| **Entitlement Import: Permissions** | ❌         | -                                                                           |         |
+
+
+
 The following lifecycle actions are available:
 
 | Action             | Description                                                                                                     |
