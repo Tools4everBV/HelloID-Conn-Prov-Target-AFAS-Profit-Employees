@@ -40,8 +40,8 @@ The following lifecycle actions are available:
 | Action             | Description                                                                                                     |
 | ------------------ | --------------------------------------------------------------------------------------------------------------- |
 | create.ps1         | PowerShell _correlate_ lifecycle action. Correlates                                                             |
-| delete.ps1         | PowerShell _delete_ lifecycle action. Update on correlate and update on update                                  |
-| update.ps1         | PowerShell _update_ lifecycle action. Clear the unique fields, since the values have to be unique over all AFAS |
+| update.ps1         | PowerShell _update_ lifecycle action. Update on correlate and update on update                                  |
+| delete.ps1         | PowerShell _delete_ lifecycle action. Clear the unique fields, since the values have to be unique over all AFAS |
 | configuration.json | Default _configuration.json_                                                                                    |
 | fieldMapping.json  | Default _fieldMapping.json_                                                                                     |
 
@@ -103,7 +103,6 @@ The following settings are required to connect to the API.
 | Token in XML format           | The AppConnector token to connect to AFAS                                                                                                             | Yes       |
 | Get Connector                 | The GetConnector in AFAS to query the employee with                                                                                                   | Yes       |
 | Update Connector              | The UpdateConnector in AFAS to update the employee with                                                                                               | Yes       |
-| Create account when not found | When toggled, if the employee account is not found, a new the AFAS employee account will be created in the create action (only in the create action). |           |
 | Update on update              | When toggled, if the mapped data differs from data in AFAS, the AFAS employee will be updated when a update is triggerd.                              |           |
 | Toggle debug logging          | When toggled, extra logging is shown. Note that this is only meant for debugging, please switch this off when in production.                          |           |
 
