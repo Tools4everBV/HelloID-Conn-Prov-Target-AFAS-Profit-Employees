@@ -171,7 +171,10 @@ try {
 
         # Return the result
         Write-Output @{
-            AccountReference = $importedAccount.Medewerker
+            AccountReference = [PSCustomObject]@{
+                    Medewerker     = $importedAccount.Medewerker
+                    Persoonsnummer = $importedAccount.Persoonsnummer
+                }
             DisplayName      = $importedAccount.DisplayName
             UserName         = $importedAccount.Email_werk
             Enabled          = $false
