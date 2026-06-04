@@ -216,10 +216,10 @@ try {
                     Message = "Error querying AFAS employee where [$($correlationProperty)] = [$($correlationValue)]. Error Message: $($errorMessage.AuditErrorMessage)"
                     IsError = $true
                 })
-        }
 
-        # Skip further actions, as this is a critical error
-        throw "Error querying AFAS employee"
+            # Skip further actions, as this is a critical error
+            throw "Error querying AFAS employee"
+        }
     }
 
     switch ($updateAction) {
@@ -345,17 +345,24 @@ catch {
     Write-Verbose "ERROR: $ex"
 }
 finally {
-    # Check if auditLogs contains errors, if errors are found, set succes to false
-    if ($outputContext.AuditLogs.IsError -contains $true) {
+    # If account is already removed, treat as successful.
+    $isPossiblyDeleted = ($outputContext.AuditLogs | Where-Object { $_.Message -like '*Possibly deleted*' }).Count -gt 0
+    if ($isPossiblyDeleted) {
+        $outputContext.Success = $true
+    }
+    # Otherwise keep original behavior: any error log means failure.
+    elseif ($outputContext.AuditLogs.IsError -contains $true) {
         $outputContext.Success = $false
     }
     # Define ExportData with account fields and correlation property 
-    $exportData = $account.PsObject.Copy()
+    $exportData = if ($null -ne $account) { $account.PsObject.Copy() } else { [PSCustomObject]@{} }
     # Add correlation property to exportdata
     $exportData | Add-Member -MemberType NoteProperty -Name $correlationProperty -Value $correlationValue -Force
     # Add aRef properties to exportdata
-    foreach ($aRefProperty in $aRef.PSObject.Properties) {
-        $exportData | Add-Member -MemberType NoteProperty -Name $aRefProperty.Name -Value $aRefProperty.Value -Force
+    if ($null -ne $aRef) {
+        foreach ($aRefProperty in $aRef.PSObject.Properties) {
+            $exportData | Add-Member -MemberType NoteProperty -Name $aRefProperty.Name -Value $aRefProperty.Value -Force
+        }
     }
     $outputContext.AccountReference = $aRef
     $outputContext.Data = $exportData
