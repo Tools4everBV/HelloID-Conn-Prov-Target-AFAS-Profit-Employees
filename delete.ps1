@@ -161,8 +161,8 @@ try {
             throw "OAuth token endpoint did not return an access_token."
         }
 
-        if ([String]::IsNullOrWhiteSpace([String]$tokenResponse.token_type)) {
-            throw "OAuth token endpoint did not return a token_type."
+        if ([String]::IsNullOrWhiteSpace([String]$tokenResponse.token_type) -or ([String]$tokenResponse.token_type).ToLowerInvariant() -ne 'bearer') {
+            throw "OAuth token endpoint returned an unexpected token_type [$($tokenResponse.token_type)]. Expected [Bearer]."
         }
 
         $Headers = @{ Authorization = "$($tokenResponse.token_type) $($tokenResponse.access_token)" }

@@ -6,7 +6,7 @@ All notable changes to this project will be documented in this file. The format 
 
 ### Changed
 
-- Changed authentication method to OAuth client credentials (breaking: `Token` configuration field replaced by `ClientId` and `ClientSecret`)
+- Changed authentication method to OAuth client credentials (breaking: `Token` configuration field replaced by `Client ID` (`ClientId`) and `Client Secret` (`ClientSecret`))
 
 ### Fixed
 
