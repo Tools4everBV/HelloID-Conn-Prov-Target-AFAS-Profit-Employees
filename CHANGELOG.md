@@ -2,11 +2,17 @@
 
 All notable changes to this project will be documented in this file. The format is based on [Keep a Changelog](https://keepachangelog.com), and this project adheres to [Semantic Versioning](https://semver.org).
 
-## [4.0.0] - 2026-09-29
+## [4.0.0] - 2026-10-02
 
 ### Changed
 
 - Changed authentication method to OAuth client credentials (breaking: `Token` configuration field replaced by `Client ID` (`ClientId`) and `Client Secret` (`ClientSecret`))
+
+## [3.3.3] - 2026-10-02
+
+### Changed
+
+- Updated the delete script to not throw an error when the person is already deleted.
 
 ## [3.3.2] - 2025-10-20
 
