@@ -375,11 +375,6 @@ finally {
     foreach ($aRefProperty in $aRef.PSObject.Properties) {
         $exportData | Add-Member -MemberType NoteProperty -Name $aRefProperty.Name -Value $aRefProperty.Value -Force
     }
-
-    if ($updateAction -eq 'NoChanges') {
-        $previousAccount = $exportData.PSObject.Copy()
-    }
-
     $outputContext.AccountReference = $aRef
     $outputContext.Data = $exportData
     $outputContext.PreviousData = $previousAccount
