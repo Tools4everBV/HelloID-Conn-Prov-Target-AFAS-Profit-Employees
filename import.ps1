@@ -8,7 +8,7 @@
 
 function Get-AFASConnectorData {
     param(
-        [parameter(Mandatory = $true)]$Token,
+        [parameter(Mandatory = $true)]$Headers,
         [parameter(Mandatory = $true)]$BaseUri,
         [parameter(Mandatory = $true)]$Connector,
         [parameter(Mandatory = $true)]$OrderByFieldIds,
@@ -18,10 +18,6 @@ function Get-AFASConnectorData {
 
     try {
         Write-Verbose "Starting downloading objects through get-connector [$connector]"
-        $encodedToken = [System.Convert]::ToBase64String([System.Text.Encoding]::ASCII.GetBytes($Token))
-        $authValue = "AfasToken $encodedToken"
-        $Headers = @{ Authorization = $authValue }
-        $Headers.Add("IntegrationId", "45963_140664") # Fixed value - Tools4ever Partner Integration ID
 
         $take = 1000
         $skip = 0
@@ -152,13 +148,36 @@ function Get-ErrorMessage {
 try {
     Write-Information 'Starting AFAS Employees account entitlement import'
 
+    # Create authorization headers using OAuth client credentials
+    $tokenUri = "$($actionContext.Configuration.BaseUri)/oauth/token"
+    Write-Verbose "Requesting OAuth access token from [$tokenUri]"
+
+    $tokenRequestBody = @{
+        grant_type    = 'client_credentials'
+        client_id     = $actionContext.Configuration.ClientId
+        client_secret = $actionContext.Configuration.ClientSecret
+    }
+
+    $tokenResponse = Invoke-RestMethod -Method Post -Uri $tokenUri -Body $tokenRequestBody -ContentType 'application/x-www-form-urlencoded' -UseBasicParsing -Verbose:$false
+
+    if ([String]::IsNullOrWhiteSpace([String]$tokenResponse.access_token)) {
+        throw "OAuth token endpoint did not return an access_token."
+    }
+
+    if ([String]::IsNullOrWhiteSpace([String]$tokenResponse.token_type) -or ([String]$tokenResponse.token_type).ToLowerInvariant() -ne 'bearer') {
+        throw "OAuth token endpoint returned an unexpected token_type [$($tokenResponse.token_type)]. Expected [Bearer]."
+    }
+
+    $headers = @{ Authorization = "$($tokenResponse.token_type) $($tokenResponse.access_token)" }
+    $headers.Add("IntegrationId", "45963_140664") # Fixed value - Tools4ever Partner Integration ID
+
     #Query persons / accounts
     $importedAccounts = [System.Collections.ArrayList]::new()
     
     #Filter - Determine what defines an account entitlement, copy from AFAS Connect cURL
     $Filter = "filterfieldids=Email_werk&filtervalues=%5Bis%20niet%20leeg%5D&operatortypes=9"
 
-    Get-AFASConnectorData -Token $($actionContext.Configuration.Token) -BaseUri $($actionContext.Configuration.BaseUri) -Connector $($actionContext.Configuration.GetConnector) -OrderByFieldIds "Medewerker" ([ref]$importedAccounts) -Filter $Filter
+    Get-AFASConnectorData -Headers $headers -BaseUri $($actionContext.Configuration.BaseUri) -Connector $($actionContext.Configuration.GetConnector) -OrderByFieldIds "Medewerker" ([ref]$importedAccounts) -Filter $Filter
 
     foreach ($importedAccount in $importedAccounts) {
         $data = @{}

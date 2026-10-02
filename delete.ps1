@@ -145,10 +145,27 @@ try {
     try {
         Write-Verbose "Querying AFAS employee where [$($correlationProperty)] = [$($correlationValue)]"
 
-        # Create authorization headers
-        $encodedToken = [System.Convert]::ToBase64String([System.Text.Encoding]::ASCII.GetBytes($actionContext.Configuration.Token))
-        $authValue = "AfasToken $encodedToken"
-        $Headers = @{ Authorization = $authValue }
+        # Create authorization headers using OAuth client credentials
+        $tokenUri = "$($actionContext.Configuration.BaseUri)/oauth/token"
+        Write-Verbose "Requesting OAuth access token from [$tokenUri]"
+
+        $tokenRequestBody = @{
+            grant_type    = 'client_credentials'
+            client_id     = $actionContext.Configuration.ClientId
+            client_secret = $actionContext.Configuration.ClientSecret
+        }
+
+        $tokenResponse = Invoke-RestMethod -Method Post -Uri $tokenUri -Body $tokenRequestBody -ContentType 'application/x-www-form-urlencoded' -UseBasicParsing -Verbose:$false
+
+        if ([String]::IsNullOrWhiteSpace([String]$tokenResponse.access_token)) {
+            throw "OAuth token endpoint did not return an access_token."
+        }
+
+        if ([String]::IsNullOrWhiteSpace([String]$tokenResponse.token_type) -or ([String]$tokenResponse.token_type).ToLowerInvariant() -ne 'bearer') {
+            throw "OAuth token endpoint returned an unexpected token_type [$($tokenResponse.token_type)]. Expected [Bearer]."
+        }
+
+        $Headers = @{ Authorization = "$($tokenResponse.token_type) $($tokenResponse.access_token)" }
         $Headers.Add("IntegrationId", "45963_140664") # Fixed value - Tools4ever Partner Integration ID
 
         $splatWebRequest = @{

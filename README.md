@@ -60,14 +60,14 @@ The following lifecycle actions are available:
 
 By using this connector you will have the ability to update employees in the AFAS Profit system.
 
-Connecting to Profit is done using the app connector system. 
+Connecting to Profit is done using the app connector system with OAuth client credentials.
 Please see the following pages from the AFAS Knowledge Base for more information.
 
 [Create the APP connector](https://help.afas.nl/help/NL/SE/App_Apps_Custom_Add.htm)
 
 [Manage the APP connector](https://help.afas.nl/help/NL/SE/App_Apps_Custom_Maint.htm)
 
-[Manual add a token to the APP connector](https://help.afas.nl/help/NL/SE/App_Apps_Custom_Tokens_Manual.htm)
+[Configure OAuth on the APP connector](https://help.afas.nl/help/NL/SE/120718.htm#o136210)
 
 ### HelloID Icon URL
 URL of the icon used for the HelloID Provisioning target system.
@@ -111,7 +111,8 @@ The following settings are required to connect to the API.
 | Setting                       | Description                                                                                                                                           | Mandatory |
 | ----------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- | --------- |
 | Base Uri                      | The URL to the AFAS environment REST services                                                                                                         | Yes       |
-| Token in XML format           | The AppConnector token to connect to AFAS                                                                                                             | Yes       |
+| Client ID                     | The OAuth client id of the AppConnector                                                                                                               | Yes       |
+| Client Secret                 | The OAuth client secret of the AppConnector                                                                                                           | Yes       |
 | Get Connector                 | The GetConnector in AFAS to query the employee with                                                                                                   | Yes       |
 | Update Connector              | The UpdateConnector in AFAS to update the employee with                                                                                               | Yes       |
 | Update on update              | When toggled, if the mapped data differs from data in AFAS, the AFAS employee will be updated when a update is triggerd.                              |           |
@@ -124,7 +125,8 @@ The following settings are required to connect to the API.
 - [ ] In addition to use to the above get-connector, the connector also uses the following build-in Profit update-connectors:
 *	KnEmployee
 - [ ] AFAS App Connector with access to the GetConnectors and associated views.
-  - [ ] Token for this AppConnector
+  - [ ] OAuth client id
+  - [ ] OAuth client secret
 
 > [!TIP]
 > For this connector we have created a default set [Tools4ever - HelloID - T4E_HelloID_Users_v2.gcn], which can be imported directly into the AFAS Profit environment.
