@@ -1,4 +1,4 @@
-name: Workflow caller - verify changelog updated 
+name: Workflow caller - verify changelog updated
 on:
   pull_request:
     types: [opened, synchronize]

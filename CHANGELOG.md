@@ -8,10 +8,6 @@ All notable changes to this project will be documented in this file. The format 
 
 - Changed authentication method to OAuth client credentials (breaking: `Token` configuration field replaced by `Client ID` (`ClientId`) and `Client Secret` (`ClientSecret`))
 
-### Fixed
-
-- Fixed redundant audit log entry when no changes are detected
-
 ## [3.3.2] - 2025-10-20
 
 ### Fixed
@@ -34,7 +30,13 @@ All notable changes to this project will be documented in this file. The format 
 
 - Updated README with inconsistency fixes
 
-## [3.2.0] / [3.1.2] - 2025-06-30
+## [3.2.0] - 2025-06-30
+
+### Changed
+
+- Updated README.md
+
+## [3.1.2] - 2025-06-30
 
 ### Changed
 
