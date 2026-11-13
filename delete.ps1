@@ -273,11 +273,11 @@ try {
             if (-not($actionContext.DryRun -eq $true)) {
                 Write-Information "Deleting AFAS Profit employee with accountReference: [$($actionContext.References.Account)]. Update payload fields: [$fieldsInPayload]"
                 Invoke-AFASEmployeeUpdate -EmployeeId $correlatedAccount.EmId -PersonNumber $correlatedAccount.BcCo -ChangedProperties $accountPropertiesChanged -Headers $headers
-                $auditLogMessage = "Delete AFAS Profit employee with accountReference: [$($actionContext.References.Account)] was successful. Update payload fields: [$fieldsInPayload]. Action initiated by: [$($actionContext.Origin)]"
+                $auditLogMessage = "Delete AFAS Profit employee with accountReference: [$($actionContext.References.Account)] was successful. Update payload fields: [$fieldsInPayload]"
             }
             else {
                 Write-Information "[DryRun] Delete AFAS Profit employee with accountReference: [$($actionContext.References.Account)], will be executed during enforcement. Update payload fields: [$fieldsInPayload]"
-                $auditLogMessage = "[DryRun] Would delete AFAS Profit employee with accountReference: [$($actionContext.References.Account)]. Update payload fields: [$fieldsInPayload]. Action initiated by: [$($actionContext.Origin)]"
+                $auditLogMessage = "[DryRun] Would delete AFAS Profit employee with accountReference: [$($actionContext.References.Account)]. Update payload fields: [$fieldsInPayload]"
             }
 
             $outputContext.Success = $true
@@ -293,7 +293,7 @@ try {
 
             $outputContext.Success = $true
             $outputContext.AuditLogs.Add([PSCustomObject]@{
-                    Message = "Delete AFAS Profit employee with accountReference: [$($actionContext.References.Account)] was successful. No changes required in AFAS. Action initiated by: [$($actionContext.Origin)]"
+                    Message = "Delete AFAS Profit employee with accountReference: [$($actionContext.References.Account)] was successful. No changes required in AFAS"
                     IsError = $false
                 })
             break
@@ -304,7 +304,7 @@ try {
 
             $outputContext.Success = $true
             $outputContext.AuditLogs.Add([PSCustomObject]@{
-                    Message = "AFAS Profit employee: [$($actionContext.References.Account)] could not be found, indicating that it may have been deleted or is out of scope of the GetConnector. Action initiated by: [$($actionContext.Origin)]"
+                    Message = "AFAS Profit employee: [$($actionContext.References.Account)] could not be found, indicating that it may have been deleted or is out of scope of the GetConnector"
                     IsError = $false
                 })
             break
@@ -317,11 +317,11 @@ catch {
     if ($($ex.Exception.GetType().FullName -eq 'Microsoft.PowerShell.Commands.HttpResponseException') -or
         $($ex.Exception.GetType().FullName -eq 'System.Net.WebException')) {
         $errorObj = Resolve-AFASProfitError -ErrorObject $ex
-        $auditLogMessage = "Could not delete AFAS Profit employee: [$($actionContext.References.Account)]. Error: $($errorObj.FriendlyMessage). Action initiated by: [$($actionContext.Origin)]"
+        $auditLogMessage = "Could not delete AFAS Profit employee: [$($actionContext.References.Account)]. Error: $($errorObj.FriendlyMessage)"
         Write-Warning "Error at Line '$($errorObj.ScriptLineNumber)': $($errorObj.Line). Error: $($errorObj.ErrorDetails)"
     }
     else {
-        $auditLogMessage = "Could not delete AFAS Profit employee: [$($actionContext.References.Account)]. Error: $($ex.Exception.Message). Action initiated by: [$($actionContext.Origin)]"
+        $auditLogMessage = "Could not delete AFAS Profit employee: [$($actionContext.References.Account)]. Error: $($ex.Exception.Message)"
         Write-Warning "Error at Line '$($ex.InvocationInfo.ScriptLineNumber)': $($ex.InvocationInfo.Line). Error: $($ex.Exception.Message)"
     }
     $outputContext.AuditLogs.Add([PSCustomObject]@{
