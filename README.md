@@ -164,11 +164,11 @@ The create action only correlates. It searches the employee on `EmId` with a non
 
 ### Update
 
-The mapped fields are compared with the current values in AFAS. Only changed fields are sent, as AFAS can return an error when a field is set to the same value. Empty mapped values are not written during an update. Mapped fields that are not available in the GetConnector cannot be compared and are skipped.
+The mapped fields are compared with the current values in AFAS. Only changed fields are sent. Empty mapped values are not written during an update. Mapped fields that are not available in the GetConnector cannot be compared and are skipped.
 
 ### Delete
 
-The delete action writes the delete mapping (by default an empty `EmAd`), including empty values, so fields can be cleared. When the employee is not found, the action is treated as successful.
+The delete action writes all fields of the delete mapping (by default an empty `EmAd`), including empty values, so fields can be cleared. When the employee is not found, the action is treated as successful.
 
 During reconciliation no field mapping data is available. The configuration setting `DeleteMode` determines the behavior:
 

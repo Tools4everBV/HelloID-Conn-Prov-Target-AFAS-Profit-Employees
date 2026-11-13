@@ -89,7 +89,7 @@ De `.gcn` wordt in AFAS gebouwd en geëxporteerd en aan de repository toegevoegd
 Regels in de scripts:
 
 * `EmId` en `BcCo` worden nooit in de update payload als veld meegestuurd (`EmId` is het element key, `BcCo` alleen de `KnPerson`-match);
-* alleen gewijzigde velden worden meegestuurd, omdat AFAS bij sommige velden een fout geeft wanneer dezelfde waarde opnieuw wordt gezet;
+* update stuurt alleen gewijzigde velden mee, zodat de audit log de werkelijke wijzigingen toont. Delete stuurt alle gemapte velden mee, zoals in de User connector. Getest: `KnPerson` accepteert een veld met de huidige waarde, ook als het leeg is;
 * een gemapt veld dat niet in de GetConnector staat, kan niet worden vergeleken en wordt stil overgeslagen (zoals in de User connector);
 * bij update worden lege gemapte waarden niet weggeschreven (zoals in de User connector). Bij delete juist wel, zodat velden kunnen worden leeggemaakt. AFAS maakt tekstvelden leeg met een lege string, niet met JSON `null`.
 
@@ -125,7 +125,7 @@ Geen mutaties in AFAS.
 ### Delete / uncorrelate
 
 * medewerker zoeken op de account reference;
-* gemapte delete-waarden (standaard `EmAd` leeg) vergelijken en gewijzigde velden wegschrijven;
+* alle gemapte delete-waarden (standaard `EmAd` leeg) wegschrijven;
 * niet gevonden: de actie slaagt, met een audit log dat de medewerker mogelijk al is verwijderd;
 * de medewerker zelf wordt nooit verwijderd.
 

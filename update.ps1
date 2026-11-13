@@ -47,129 +47,6 @@ function Resolve-AFASProfitError {
         Write-Output $httpErrorObj
     }
 }
-
-function Get-ChangedProperties {
-    # Compares mapped values with the current AFAS values. Mapped fields that are not in the GetConnector cannot be compared and are skipped.
-    [CmdletBinding()]
-    param (
-        [Parameter(Mandatory)]
-        [object]
-        $CurrentAccount,
-
-        [Parameter(Mandatory)]
-        [object]
-        $MappedData,
-
-        [string[]]
-        $ExcludeFields = @(),
-
-        [switch]
-        $IncludeEmptyValues
-    )
-
-    foreach ($property in $MappedData.PSObject.Properties) {
-        if ($property.Name -in $ExcludeFields) {
-            continue
-        }
-
-        $currentProperty = $CurrentAccount.PSObject.Properties[$property.Name]
-        if ($null -eq $currentProperty) {
-            continue
-        }
-
-        $mappedValue = $property.Value
-        $isEmpty = ($null -eq $mappedValue) -or ($mappedValue -is [string] -and [string]::IsNullOrEmpty($mappedValue))
-        if ($isEmpty) {
-            if (-not $IncludeEmptyValues) {
-                continue
-            }
-            # AFAS clears text fields with an empty string, not with JSON null.
-            $mappedValue = ''
-        }
-
-        if ($mappedValue -is [string] -and $mappedValue -match '^(true|false)$') {
-            $mappedValue = [bool]::Parse($mappedValue)
-        }
-        $mappedComparisonValue = if ($mappedValue -is [bool]) { $mappedValue.ToString().ToLowerInvariant() } else { [string]$mappedValue }
-
-        $currentValue = $currentProperty.Value
-        $currentComparisonValue = if ($currentValue -is [bool]) { $currentValue.ToString().ToLowerInvariant() } else { [string]$currentValue }
-
-        if ($mappedComparisonValue -ne $currentComparisonValue) {
-            [PSCustomObject]@{
-                Name          = $property.Name
-                Value         = $mappedValue
-                PreviousValue = $currentValue
-            }
-        }
-    }
-}
-
-function Invoke-AFASEmployeeUpdate {
-    [CmdletBinding()]
-    param (
-        [Parameter(Mandatory)]
-        [string]
-        $EmployeeId,
-
-        [Parameter(Mandatory)]
-        [string]
-        $PersonNumber,
-
-        [Parameter(Mandatory)]
-        [object[]]
-        $ChangedProperties,
-
-        [Parameter(Mandatory)]
-        [hashtable]
-        $Headers
-    )
-
-    # Free fields (U + GUID) of the employee belong on the AfasEmployee element, all other fields on the KnPerson element.
-    $employeeFields = [ordered]@{}
-    $personFields = [ordered]@{
-        MatchPer = 0 # Match the person on BcCo
-        BcCo     = $PersonNumber
-    }
-    foreach ($property in $ChangedProperties) {
-        if ($property.Name -match '^U[0-9A-Fa-f]{32}$') {
-            $employeeFields[$property.Name] = $property.Value
-        }
-        else {
-            $personFields[$property.Name] = $property.Value
-        }
-    }
-
-    $element = [ordered]@{
-        '@EmId' = $EmployeeId
-    }
-    if ($employeeFields.Count -gt 0) {
-        $element['Fields'] = $employeeFields
-    }
-    $element['Objects'] = @(
-        @{
-            KnPerson = @{
-                Element = @{
-                    Fields = $personFields
-                }
-            }
-        }
-    )
-
-    $body = ([PSCustomObject]@{ AfasEmployee = @{ Element = $element } } | ConvertTo-Json -Depth 10)
-    $splatUpdateParams = @{
-        Uri             = "$($actionContext.Configuration.BaseUri)/connectors/$($actionContext.Configuration.UpdateConnector)"
-        Headers         = $Headers
-        Method          = 'PUT'
-        Body            = ([System.Text.Encoding]::UTF8.GetBytes($body))
-        ContentType     = 'application/json;charset=utf-8'
-        UseBasicParsing = $true
-        ErrorAction     = 'Stop'
-    }
-
-    Write-Information "Updating AFAS Profit employee with accountReference: [$EmployeeId]"
-    $null = Invoke-RestMethod @splatUpdateParams -Verbose:$false
-}
 #endregion
 
 try {
@@ -228,8 +105,33 @@ try {
             throw 'Correlated AFAS employee is missing required person number [BcCo]. Verify the AFAS GetConnector output.'
         }
 
-        # EmId is the element key and BcCo is only used to match KnPerson. Both are never updated by HelloID.
-        $accountPropertiesChanged = @(Get-ChangedProperties -CurrentAccount $correlatedAccount -MappedData $actionContext.Data -ExcludeFields @('EmId', 'BcCo'))
+        # Compare mapped values with the current AFAS values. Only changed fields are sent, so the audit log shows the actual changes.
+        $accountPropertiesChanged = [System.Collections.Generic.List[object]]::new()
+        foreach ($property in $actionContext.Data.PSObject.Properties) {
+            # EmId is the element key and BcCo is only used to match KnPerson. Both are never updated by HelloID.
+            # Mapped fields that are not in the GetConnector cannot be compared and are skipped.
+            $currentProperty = $correlatedAccount.PSObject.Properties[$property.Name]
+            if ($property.Name -in @('EmId', 'BcCo') -or $null -eq $currentProperty) {
+                continue
+            }
+
+            # Empty mapped values are not written during an update.
+            $mappedValue = $property.Value
+            if ($null -eq $mappedValue -or ($mappedValue -is [string] -and [string]::IsNullOrEmpty($mappedValue))) {
+                continue
+            }
+
+            # Normalize values to avoid type-based changes.
+            if ($mappedValue -is [string] -and $mappedValue -match '^(true|false)$') {
+                $mappedValue = [bool]::Parse($mappedValue)
+            }
+            $mappedComparisonValue = if ($mappedValue -is [bool]) { $mappedValue.ToString().ToLowerInvariant() } else { [string]$mappedValue }
+            $currentComparisonValue = if ($currentProperty.Value -is [bool]) { $currentProperty.Value.ToString().ToLowerInvariant() } else { [string]$currentProperty.Value }
+
+            if ($mappedComparisonValue -ne $currentComparisonValue) {
+                $accountPropertiesChanged.Add([PSCustomObject]@{ Name = $property.Name; Value = $mappedValue })
+            }
+        }
 
         if ($accountPropertiesChanged.Count -gt 0) {
             $lifecycleProcess = 'UpdateAccount'
@@ -250,8 +152,51 @@ try {
         'UpdateAccount' {
             Write-Information "Account property(s) required to update: $($accountPropertiesChanged.Name -join ', ')"
 
+            # Free fields (U + GUID) of the employee belong on the AfasEmployee element, all other fields on the KnPerson element.
+            $employeeFields = [ordered]@{}
+            $personFields = [ordered]@{
+                MatchPer = 0 # Match the person on BcCo
+                BcCo     = $correlatedAccount.BcCo
+            }
+            foreach ($property in $accountPropertiesChanged) {
+                if ($property.Name -match '^U[0-9A-Fa-f]{32}$') {
+                    $employeeFields[$property.Name] = $property.Value
+                }
+                else {
+                    $personFields[$property.Name] = $property.Value
+                }
+            }
+
+            $element = [ordered]@{
+                '@EmId' = $correlatedAccount.EmId
+            }
+            if ($employeeFields.Count -gt 0) {
+                $element['Fields'] = $employeeFields
+            }
+            $element['Objects'] = @(
+                @{
+                    KnPerson = @{
+                        Element = @{
+                            Fields = $personFields
+                        }
+                    }
+                }
+            )
+
+            $body = ([PSCustomObject]@{ AfasEmployee = @{ Element = $element } } | ConvertTo-Json -Depth 10)
+            $splatUpdateParams = @{
+                Uri             = "$($actionContext.Configuration.BaseUri)/connectors/$($actionContext.Configuration.UpdateConnector)"
+                Headers         = $headers
+                Method          = 'PUT'
+                Body            = ([System.Text.Encoding]::UTF8.GetBytes($body))
+                ContentType     = 'application/json;charset=utf-8'
+                UseBasicParsing = $true
+                ErrorAction     = 'Stop'
+            }
+
             if (-not($actionContext.DryRun -eq $true)) {
-                Invoke-AFASEmployeeUpdate -EmployeeId $correlatedAccount.EmId -PersonNumber $correlatedAccount.BcCo -ChangedProperties $accountPropertiesChanged -Headers $headers
+                Write-Information "Updating AFAS Profit employee with accountReference: [$($actionContext.References.Account)]"
+                $null = Invoke-RestMethod @splatUpdateParams -Verbose:$false
             }
             else {
                 Write-Information "[DryRun] Update AFAS Profit employee with accountReference: [$($actionContext.References.Account)], will be executed during enforcement"
