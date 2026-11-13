@@ -2,6 +2,33 @@
 
 All notable changes to this project will be documented in this file. The format is based on [Keep a Changelog](https://keepachangelog.com), and this project adheres to [Semantic Versioning](https://semver.org).
 
+## [5.0.0] - Unreleased
+
+This version is intended for new implementations only and is not compatible with 4.x.
+
+### Added
+
+- Added `design.md` with the design of the refactored connector
+- Added configuration setting `DeleteMode` to control the delete behavior during reconciliation (`keepEmAd`, `clearEmAd`)
+- Added support for free fields (`U` + GUID) on the employee, which are written to the `AfasEmployee` element
+- Added GetConnector `T4E_HelloID_Target_Employees` with field ids equal to the AFAS field codes
+
+### Changed
+
+- Changed the account reference from an object (`Medewerker`, `Persoonsnummer`) to the employee number `EmId` as string (breaking)
+- Changed the correlation account field from `Medewerker` to `EmId` (breaking)
+- Changed the default GetConnector to `T4E_HelloID_Target_Employees` (breaking)
+- Changed the field mapping: `Medewerker` and `Persoonsnummer` replaced by `EmId` and `BcCo` (breaking)
+- Mapped fields are now compared generically with the GetConnector, so fields can be added without script changes
+- Rewrote `create.ps1`, `update.ps1`, `delete.ps1` and `import.ps1` to the conventions of the AFAS Profit Users connector (error handling, logging, filter value validation)
+- Create now requires a non-empty `BcCo` and fails when multiple employees are found
+- Import now pages without intermediate storage and warns about duplicate employees
+
+### Removed
+
+- Removed configuration setting `onlyUpdateOnCorrelate`
+- Removed configuration setting `isDebug`
+
 ## [4.0.1] - 2026-10-02
 
 ### Fixed

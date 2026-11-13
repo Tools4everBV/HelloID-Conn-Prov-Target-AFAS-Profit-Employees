@@ -6,6 +6,7 @@
     "templateOptions": {
       "label": "Base Uri",
       "placeholder": "https://12345.rest.afas.online/profitrestservices",
+      "description": "Base URL of the AFAS Profit REST services endpoint.",
       "required": true
     }
   },
@@ -35,10 +36,11 @@
   {
     "key": "GetConnector",
     "type": "input",
-    "defaultValue": "T4E_HelloID_Users_v2",
+    "defaultValue": "T4E_HelloID_Target_Employees",
     "templateOptions": {
       "label": "GetConnector",
-      "placeholder": "T4E_HelloID_Users_v2",
+      "placeholder": "T4E_HelloID_Target_Employees",
+      "description": "Name of the AFAS GetConnector.",
       "required": true
     }
   },
@@ -49,27 +51,28 @@
     "templateOptions": {
       "label": "UpdateConnector",
       "placeholder": "KnEmployee",
+      "description": "Name of the AFAS UpdateConnector used for employee mutations.",
       "required": true
     }
   },
   {
-    "key": "onlyUpdateOnCorrelate",
-    "type": "checkbox",
-    "defaultValue": false,
+    "key": "DeleteMode",
+    "type": "select",
+    "defaultValue": "keepEmAd",
     "templateOptions": {
-      "label": "Only update on correlate",
-      "required": false,
-      "description": "When toggled, the AFAS employee will only be updated when the account is correlated"
-    }
-  },
-  {
-    "key": "isDebug",
-    "type": "checkbox",
-    "defaultValue": false,
-    "templateOptions": {
-      "label": "Toggle debug logging",
-      "description": "When toggled, debug logging will be displayed",
-      "required": false
+      "label": "Behavior on delete during a reconciliation action",
+      "description": "Applies only when delete is triggered by reconciliation (e.g. the account was removed from the source but still exists in AFAS). A regular delete action uses the field mapping instead.",
+      "options": [
+        {
+          "label": "Keep work email as is, no changes in AFAS",
+          "value": "keepEmAd"
+        },
+        {
+          "label": "Clear work email",
+          "value": "clearEmAd"
+        }
+      ],
+      "required": true
     }
   }
 ]
