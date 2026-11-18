@@ -2,32 +2,32 @@
 
 All notable changes to this project will be documented in this file. The format is based on [Keep a Changelog](https://keepachangelog.com), and this project adheres to [Semantic Versioning](https://semver.org).
 
-## [5.0.0] - Unreleased
+## [5.0.0] - 2026-11-18
 
-This version is intended for new implementations only and is not compatible with 4.x.
+This is a breaking release: the account reference, the correlation field, the GetConnector, the field mapping and the configuration have changed. Upgrade with a clean go-live of the connector, see [MIGRATION.md](./MIGRATION.md).
 
 ### Added
 
-- Added `design.md` with the design of the refactored connector
-- Added configuration setting `DeleteMode` to control the delete behavior during reconciliation (`keepEmAd`, `clearEmAd`)
+- Added configuration setting `DeleteMode` for delete during reconciliation (default `keepEmAd`: no changes in AFAS; `clearEmAd`: clear the work email address)
 - Added support for free fields (`U` + GUID) on the employee, which are written to the `AfasEmployee` element
-- Added GetConnector `T4E_HelloID_Target_Employees` with field ids equal to the AFAS field codes
+- Added GetConnector `Tools4ever - HelloID - T4E_HelloID_Target_Employees.gcn` with field ids equal to the AFAS field codes
 
 ### Changed
 
-- Changed the account reference from an object (`Medewerker`, `Persoonsnummer`) to the employee number `EmId` as string (breaking)
-- Changed the correlation account field from `Medewerker` to `EmId` (breaking)
-- Changed the default GetConnector to `T4E_HelloID_Target_Employees` (breaking)
-- Changed the field mapping: `Medewerker` and `Persoonsnummer` replaced by `EmId` and `BcCo` (breaking)
-- Mapped fields are now compared generically with the GetConnector, so fields can be added without script changes
+- **Breaking:** the account reference is now the employee number `EmId` (string) instead of an object with `Medewerker` and `Persoonsnummer`
+- **Breaking:** the account correlation field is now `EmId` instead of `Medewerker`
+- **Breaking:** the default GetConnector is now `T4E_HelloID_Target_Employees`
+- **Breaking:** the field mapping uses `EmId` and `BcCo` instead of `Medewerker` and `Persoonsnummer`
+- Mapped fields are compared generically with the GetConnector, so fields can be added without script changes
+- Update only sends the changed mapped fields; an empty or `null` mapped value clears the field in AFAS
+- Create fails when no employee with a person number (`BcCo`) or multiple employees are found
+- Import returns every employee with a person number (`BcCo`) instead of only employees with a work email address, pages without intermediate storage and warns about duplicate employees
 - Rewrote `create.ps1`, `update.ps1`, `delete.ps1` and `import.ps1` to the conventions of the AFAS Profit Users connector (error handling, logging, filter value validation)
-- Create now requires a non-empty `BcCo` and fails when multiple employees are found
-- Import now pages without intermediate storage and warns about duplicate employees
 
 ### Removed
 
-- Removed configuration setting `onlyUpdateOnCorrelate`
-- Removed configuration setting `isDebug`
+- Removed configuration settings `onlyUpdateOnCorrelate` (Only update on correlate) and `isDebug` (Toggle debug logging)
+- Removed GetConnector `Tools4ever - HelloID - T4E_HelloID_Users_v2.gcn`
 
 ## [4.0.1] - 2026-10-02
 
