@@ -50,8 +50,8 @@ function Resolve-AFASProfitError {
 #endregion functions
 
 try {
-    # Filter - Determine what defines an account entitlement, copy from AFAS Connect cURL. An employee with a work email address is considered an account.
-    $Filter = "filterfieldids=EmAd&filtervalues=%5Bis%20niet%20leeg%5D&operatortypes=9"
+    # Filter - Determine what defines an account entitlement, copy from AFAS Connect cURL. An employee with a person number (BcCo) is considered an account, the same condition as the create action.
+    $Filter = "filterfieldids=BcCo&filtervalues=%5Bis%20niet%20leeg%5D&operatortypes=9"
 
     Write-Information "Starting AFAS Employees account entitlement import through get-connector [$($actionContext.Configuration.GetConnector)]"
 
