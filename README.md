@@ -22,6 +22,7 @@
     - [Field mapping](#field-mapping)
     - [Account Reference](#account-reference)
   - [Remarks](#remarks)
+    - [Breaking change in version 5.0.0](#breaking-change-in-version-500)
     - [Create](#create)
     - [Update](#update)
     - [Delete](#delete)
@@ -149,8 +150,10 @@ The account reference is populated with the `EmId` property (employee number) fr
 
 ## Remarks
 
-> [!IMPORTANT]
-> This version (5.x) is intended for new implementations only. The account reference, GetConnector, field mapping and configuration are not compatible with version 4.x and earlier.
+### Breaking change in version 5.0.0
+
+> [!WARNING]
+> Version 5.0.0 is **not backward compatible** with version 4.x. The account reference, the correlation field, the GetConnector, the field mapping and the configuration have changed. Upgrade with a clean go-live of the connector, see [MIGRATION.md](./MIGRATION.md).
 
 > [!IMPORTANT]
 > In view of GDPR, the persons private data, such as private email address and birthdate are not in the data collection by default. When needed for the implementation (e.g. set emailaddress with private email address on delete), these properties will have to be added.
