@@ -23,9 +23,15 @@
     - [Account Reference](#account-reference)
   - [Remarks](#remarks)
     - [Breaking change in version 5.0.0](#breaking-change-in-version-500)
-    - [Create](#create)
+    - [Private data](#private-data)
+    - [Employees are never created or deleted](#employees-are-never-created-or-deleted)
+    - [One row per employee](#one-row-per-employee)
+    - [Comma or semicolon in values](#comma-or-semicolon-in-values)
+    - [Create / correlate](#create--correlate)
     - [Update](#update)
     - [Delete](#delete)
+    - [Reconciliation](#reconciliation)
+    - [Import](#import)
     - [Adding fields](#adding-fields)
     - [Free fields](#free-fields)
   - [Development resources](#development-resources)
@@ -49,7 +55,7 @@ The following features are available:
 | **Resources**                             | ❌         | -                      |                   |
 | **Entitlement Import: Accounts**          | ✅         | -                      |                   |
 | **Entitlement Import: Permissions**       | ❌         | -                      |                   |
-| **Governance Reconciliation Resolutions** | ✅         | Delete                 | See `DeleteMode`  |
+| **Governance Reconciliation Resolutions** | ✅         | Delete                 | See [Reconciliation](#reconciliation) |
 
 ## Getting started
 
@@ -84,7 +90,7 @@ https://raw.githubusercontent.com/Tools4everBV/HelloID-Conn-Prov-Target-AFAS-Pro
 > [!TIP]
 > For this connector we have created a default GetConnector [Tools4ever - HelloID - T4E_HelloID_Target_Employees.gcn], which can be imported directly into the AFAS Profit environment.
 
-The field ids of the GetConnector are equal to the AFAS field codes of `KnEmployee` / `KnPerson`. This allows the scripts to compare the field mapping with AFAS without a translation table.
+The field ids of the GetConnector are equal to the AFAS field codes of `KnEmployee` / `KnPerson`. This allows the scripts to compare the field mapping with AFAS without a translation table. The GetConnector must return a single row per employee, see [One row per employee](#one-row-per-employee).
 
 | Field id    | AFAS description    | Usage                                       |
 |-------------|---------------------|---------------------------------------------|
@@ -95,9 +101,6 @@ The field ids of the GetConnector are equal to the AFAS field codes of `KnEmploy
 | EmailPortal | E-mail toegang      | Mappable                                    |
 | TeNr        | Telefoonnr. werk    | Mappable                                    |
 | MbNr        | Mobiel werk         | Mappable                                    |
-
-> [!IMPORTANT]
-> The GetConnector must return a single row per employee. When multiple rows are returned for the same `EmId`, the update and delete actions fail.
 
 ### Connection settings
 
@@ -155,13 +158,23 @@ The account reference is populated with the `EmId` property (employee number) fr
 > [!WARNING]
 > Version 5.0.0 is **not backward compatible** with version 4.x. The account reference, the correlation field, the GetConnector, the field mapping and the configuration have changed. Upgrade with a clean go-live of the connector, see [MIGRATION.md](./MIGRATION.md).
 
-> [!IMPORTANT]
-> In view of GDPR, the persons private data, such as private email address and birthdate are not in the data collection by default. When needed for the implementation (e.g. set emailaddress with private email address on delete), these properties will have to be added.
+### Private data
 
-> [!IMPORTANT]
-> We never create or delete employees in AFAS. The connector only correlates existing employees and updates the mapped fields.
+- **GDPR**: The private data of persons, such as the private e-mail address and birth date, is not in the data collection by default. When it is needed for the implementation (for example the private e-mail address on delete), these properties have to be added.
 
-### Create
+### Employees are never created or deleted
+
+- **Correlate only**: The connector only correlates existing employees and updates the mapped fields. Employees are never created or deleted in AFAS.
+
+### One row per employee
+
+- **Unique employee number**: The GetConnector must return a single row per employee (`EmId`). When multiple rows are found for the same `EmId`, the update and delete actions fail.
+
+### Comma or semicolon in values
+
+- **Filter values**: Account reference values and correlation values that contain a comma or semicolon are rejected, because AFAS uses these characters to separate filter values.
+
+### Create / correlate
 
 The create action only correlates. It searches the employee on `EmId` with a non-empty `BcCo`. When no employee or multiple employees are found, the action fails. The create action does not write to AFAS; HelloID performs an update directly after correlation.
 
@@ -173,12 +186,18 @@ The update action only sends the changed fields. An empty (`""`) or `null` mappe
 
 The delete action writes all fields of the delete mapping (by default an empty `EmAd`), including empty values, so fields can be cleared. When the employee is not found, the action is treated as successful.
 
-During reconciliation no field mapping data is available. The configuration setting `DeleteMode` determines the behavior:
+### Reconciliation
 
-| Value       | Behavior                                         |
-|-------------|--------------------------------------------------|
-| `keepEmAd`  | No changes in AFAS, only uncorrelate (default)   |
-| `clearEmAd` | Clear the work email address (`EmAd`)            |
+During reconciliation no field mapping data is available, so delete uses the setting `DeleteMode`:
+
+| Value                | Delete                                          |
+|----------------------|-------------------------------------------------|
+| `keepEmAd` (default) | No changes in AFAS, only uncorrelate            |
+| `clearEmAd`          | Clear the work email address (`EmAd`)           |
+
+### Import
+
+The account entitlement import returns every employee in the GetConnector with a person number (`BcCo`), the same condition as the create action. The display name is `Nm` (fallback `EmId`) and the username is `EmAd`. `Enabled` is always `false`, because the connector has no enable or disable action.
 
 ### Adding fields
 
