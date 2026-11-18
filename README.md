@@ -164,7 +164,7 @@ The create action only correlates. It searches the employee on `EmId` with a non
 
 ### Update
 
-The mapped fields are compared with the current values in AFAS. Only changed fields are sent. Empty mapped values are not written during an update. Mapped fields that are not available in the GetConnector cannot be compared and are skipped.
+The update action only sends the changed fields. An empty (`""`) or `null` mapped value clears the field in AFAS. Mapped fields that are not available in the GetConnector cannot be compared and are skipped.
 
 ### Delete
 

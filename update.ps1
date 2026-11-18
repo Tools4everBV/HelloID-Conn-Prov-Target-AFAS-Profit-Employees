@@ -115,11 +115,8 @@ try {
                 continue
             }
 
-            # Empty mapped values are not written during an update.
-            $mappedValue = $property.Value
-            if ($null -eq $mappedValue -or ($mappedValue -is [string] -and [string]::IsNullOrEmpty($mappedValue))) {
-                continue
-            }
+            # An empty or null mapped value clears the field in AFAS. AFAS clears text fields with an empty string, not with JSON null. AFAS returns empty fields as null, which compares as an empty string.
+            $mappedValue = if ($null -eq $property.Value) { '' } else { $property.Value }
 
             # Normalize values to avoid type-based changes.
             if ($mappedValue -is [string] -and $mappedValue -match '^(true|false)$') {
