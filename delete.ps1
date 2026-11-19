@@ -58,6 +58,11 @@ try {
         throw 'Account reference contains a comma or semicolon, which cannot be used in AFAS filter values'
     }
 
+    # Reconciliation resolutions are not supported. AFAS employees are never deleted, and an employee that is not managed by HelloID cannot be reliably distinguished from an employee outside the scope of HelloID.
+    if ($actionContext.Origin -eq 'reconciliation') {
+        throw 'Delete triggered by reconciliation is not supported for this correlate-only connector. AFAS employees are never deleted.'
+    }
+
     Write-Information 'Verifying if an AFAS Profit employee exists'
 
     # Create authorization headers using OAuth client credentials
@@ -104,29 +109,8 @@ try {
             throw 'Correlated AFAS employee is missing required person number [BcCo]. Verify the AFAS GetConnector output.'
         }
 
-        # During reconciliation no field mapping data is available, so the configured DeleteMode determines the end state.
-        if ($actionContext.Origin -eq 'reconciliation') {
-            $deleteMode = [string]$actionContext.Configuration.DeleteMode
-            switch ($deleteMode) {
-                'keepEmAd' {
-                    $mappedData = [PSCustomObject]@{}
-                    break
-                }
-                'clearEmAd' {
-                    $mappedData = [PSCustomObject]@{ EmAd = '' }
-                    break
-                }
-                default {
-                    throw "Unsupported DeleteMode value [$deleteMode]"
-                }
-            }
-        }
-        else {
-            $mappedData = $actionContext.Data
-        }
-
         # All mapped fields are sent, AFAS accepts a field that is set to its current value. EmId is the element key and BcCo is only used to match KnPerson. Both are never updated by HelloID.
-        $fieldsToUpdate = @($mappedData.PSObject.Properties | Where-Object { $_.Name -notin @('EmId', 'BcCo') })
+        $fieldsToUpdate = @($actionContext.Data.PSObject.Properties | Where-Object { $_.Name -notin @('EmId', 'BcCo') })
 
         if ($fieldsToUpdate.Count -gt 0) {
             $lifecycleProcess = 'DeleteAccount'

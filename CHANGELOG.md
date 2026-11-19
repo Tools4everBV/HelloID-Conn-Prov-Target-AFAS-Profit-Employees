@@ -8,7 +8,6 @@ This is a breaking release: the account reference, the correlation field, the Ge
 
 ### Added
 
-- Added configuration setting `DeleteMode` for delete during reconciliation (default `keepEmAd`: no changes in AFAS; `clearEmAd`: clear the work email address)
 - Added support for free fields (`U` + GUID) on the employee, which are written to the `AfasEmployee` element
 - Added GetConnector `Tools4ever - HelloID - T4E_HelloID_Target_Employees.gcn` with field ids equal to the AFAS field codes
 
@@ -21,7 +20,8 @@ This is a breaking release: the account reference, the correlation field, the Ge
 - Mapped fields are compared generically with the GetConnector, so fields can be added without script changes
 - Update only sends the changed mapped fields; an empty or `null` mapped value clears the field in AFAS
 - Create fails when no employee with a person number (`BcCo`) or multiple employees are found
-- Import returns every employee with a person number (`BcCo`) instead of only employees with a work email address, pages without intermediate storage and warns about duplicate employees
+- Delete fails when it is triggered by reconciliation, because reconciliation resolutions are not supported for this correlate-only connector
+- Import pages without intermediate storage and warns about duplicate employees
 - Rewrote `create.ps1`, `update.ps1`, `delete.ps1` and `import.ps1` to the conventions of the AFAS Profit Users connector (error handling, logging, filter value validation)
 
 ### Removed

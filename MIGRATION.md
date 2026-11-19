@@ -7,14 +7,15 @@
 
 ### What has changed
 
-| Item                      | Version 4.x                                        | Version 5.0.0                                                                     |
-| ------------------------- | -------------------------------------------------- | --------------------------------------------------------------------------------- |
-| Account reference         | Object with `Medewerker` and `Persoonsnummer`      | Employee number `EmId` (string)                                                   |
-| Account correlation field | `Medewerker`                                       | `EmId`                                                                            |
-| GetConnector              | `T4E_HelloID_Users_v2`                             | `T4E_HelloID_Target_Employees`, with field ids equal to the AFAS field codes      |
-| Field mapping             | `Medewerker`, `Persoonsnummer`, `EmAd`             | `EmId`, `BcCo`, `EmAd`                                                            |
-| Free fields               | Script changes                                     | GetConnector and field mapping only, see [Free fields](./README.md#free-fields)   |
-| Configuration             | `onlyUpdateOnCorrelate`, `isDebug`                 | Removed; added `DeleteMode`                                                       |
+| Item                      | Version 4.x                                   | Version 5.0.0                                                                   |
+|---------------------------|-----------------------------------------------|---------------------------------------------------------------------------------|
+| Account reference         | Object with `Medewerker` and `Persoonsnummer` | Employee number `EmId` (string)                                                 |
+| Account correlation field | `Medewerker`                                  | `EmId`                                                                          |
+| GetConnector              | `T4E_HelloID_Users_v2`                        | `T4E_HelloID_Target_Employees`, with field ids equal to the AFAS field codes    |
+| Field mapping             | `Medewerker`, `Persoonsnummer`, `EmAd`        | `EmId`, `BcCo`, `EmAd`                                                          |
+| Free fields               | Script changes                                | GetConnector and field mapping only, see [Free fields](./README.md#free-fields) |
+| Configuration             | `onlyUpdateOnCorrelate`, `isDebug`            | Removed                                                                         |
+| Reconciliation            | Not documented                                | Not supported, a delete triggered by reconciliation fails                       |
 
 The scripts look up the employee by `EmId` and expect the account reference as a string. An account reference of version 4.x is rejected, so every action on an existing 4.x account fails.
 

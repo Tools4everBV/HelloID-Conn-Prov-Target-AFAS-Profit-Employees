@@ -48,14 +48,14 @@ _HelloID-Conn-Prov-Target-AFAS-Profit-Employees_ is a _target_ connector. _AFAS-
 
 The following features are available:
 
-| Feature                                   | Supported | Actions                | Remarks           |
-|-------------------------------------------|-----------|------------------------|-------------------|
-| **Account Lifecycle**                     | ✅         | Create, Update, Delete | Correlation only  |
-| **Permissions**                           | ❌         | -                      |                   |
-| **Resources**                             | ❌         | -                      |                   |
-| **Entitlement Import: Accounts**          | ✅         | -                      |                   |
-| **Entitlement Import: Permissions**       | ❌         | -                      |                   |
-| **Governance Reconciliation Resolutions** | ✅         | Delete                 | See [Reconciliation](#reconciliation) |
+| Feature                                   | Supported | Actions                | Remarks                               |
+|-------------------------------------------|-----------|------------------------|---------------------------------------|
+| **Account Lifecycle**                     | ✅         | Create, Update, Delete | Correlation only                      |
+| **Permissions**                           | ❌         | -                      |                                       |
+| **Resources**                             | ❌         | -                      |                                       |
+| **Entitlement Import: Accounts**          | ✅         | -                      |                                       |
+| **Entitlement Import: Permissions**       | ❌         | -                      |                                       |
+| **Governance Reconciliation Resolutions** | ❌         | -                      | See [Reconciliation](#reconciliation) |
 
 ## Getting started
 
@@ -92,37 +92,36 @@ https://raw.githubusercontent.com/Tools4everBV/HelloID-Conn-Prov-Target-AFAS-Pro
 
 The field ids of the GetConnector are equal to the AFAS field codes of `KnEmployee` / `KnPerson`. This allows the scripts to compare the field mapping with AFAS without a translation table. The GetConnector must return a single row per employee, see [One row per employee](#one-row-per-employee).
 
-| Field id    | AFAS description    | Usage                                       |
-|-------------|---------------------|---------------------------------------------|
-| EmId        | Medewerker          | Correlation and account reference           |
-| BcCo        | Persoonsnummer      | Match of the person in the update payload   |
-| Nm          | Naam                | Display name in the account import          |
-| EmAd        | E-mail werk         | Mappable                                    |
-| EmailPortal | E-mail toegang      | Mappable                                    |
-| TeNr        | Telefoonnr. werk    | Mappable                                    |
-| MbNr        | Mobiel werk         | Mappable                                    |
+| Field id    | AFAS description | Usage                                     |
+|-------------|------------------|-------------------------------------------|
+| EmId        | Medewerker       | Correlation and account reference         |
+| BcCo        | Persoonsnummer   | Match of the person in the update payload |
+| Nm          | Naam             | Display name in the account import        |
+| EmAd        | E-mail werk      | Mappable                                  |
+| EmailPortal | E-mail toegang   | Mappable                                  |
+| TeNr        | Telefoonnr. werk | Mappable                                  |
+| MbNr        | Mobiel werk      | Mappable                                  |
 
 ### Connection settings
 
 The following settings are required to connect to the API.
 
-| Setting                                            | Description                                                                                                                         | Mandatory |
-|----------------------------------------------------|-------------------------------------------------------------------------------------------------------------------------------------|-----------|
-| Base Uri                                           | The URL to the AFAS environment REST services                                                                                       | Yes       |
-| Client ID                                          | The OAuth client id of the AppConnector                                                                                             | Yes       |
-| Client Secret                                      | The OAuth client secret of the AppConnector                                                                                         | Yes       |
-| GetConnector                                       | The GetConnector in AFAS to query the employee with                                                                                 | Yes       |
-| UpdateConnector                                    | The UpdateConnector in AFAS to update the employee with                                                                             | Yes       |
-| Behavior on delete during a reconciliation action  | Only applies when delete is triggered by reconciliation, when no field mapping data is available. `keepEmAd` (default) or `clearEmAd` | Yes       |
+| Setting         | Description                                             | Mandatory |
+|-----------------|---------------------------------------------------------|-----------|
+| Base Uri        | The URL to the AFAS environment REST services           | Yes       |
+| Client ID       | The OAuth client id of the AppConnector                 | Yes       |
+| Client Secret   | The OAuth client secret of the AppConnector             | Yes       |
+| GetConnector    | The GetConnector in AFAS to query the employee with     | Yes       |
+| UpdateConnector | The UpdateConnector in AFAS to update the employee with | Yes       |
 
 #### Scope
 
 The data collection retrieved by the GetConnector is sufficient for HelloID to provision persons. The data collection can be changed by the customer itself to meet their requirements.
 
-| Connector                                              | Field               | Default filter            |
-|--------------------------------------------------------|---------------------|---------------------------|
+| Connector                                               | Field               | Default filter            |
+|---------------------------------------------------------|---------------------|---------------------------|
 | __Tools4ever - HelloID - T4E_HelloID_Target_Employees__ | contract start date | <[Vandaag + 3 maanden]    |
-|                                                        | contract end date   | >[Vandaag - 3 maanden];[] |
+|                                                         | contract end date   | >[Vandaag - 3 maanden];[] |
 
 ### Correlation configuration
 
@@ -141,11 +140,11 @@ The correlation configuration is used to specify which properties will be used t
 
 The field mapping can be imported by using the [_fieldMapping.json_](./fieldMapping.json) file.
 
-| Field | Actions                | Description                                                                 |
-|-------|------------------------|-----------------------------------------------------------------------------|
-| EmId  | Create                 | Correlation on employee number                                              |
-| BcCo  | Create, Update         | Person number, filled by the scripts from AFAS. Never updated               |
-| EmAd  | Create, Update, Delete | Work email address. Cleared on delete, as it has to be unique within AFAS   |
+| Field | Actions                | Description                                                               |
+|-------|------------------------|---------------------------------------------------------------------------|
+| EmId  | Create                 | Correlation on employee number                                            |
+| BcCo  | Create, Update         | Person number, filled by the scripts from AFAS. Never updated             |
+| EmAd  | Create, Update, Delete | Work email address. Cleared on delete, as it has to be unique within AFAS |
 
 ### Account Reference
 
@@ -188,16 +187,11 @@ The delete action writes all fields of the delete mapping (by default an empty `
 
 ### Reconciliation
 
-During reconciliation no field mapping data is available, so delete uses the setting `DeleteMode`:
-
-| Value                | Delete                                          |
-|----------------------|-------------------------------------------------|
-| `keepEmAd` (default) | No changes in AFAS, only uncorrelate            |
-| `clearEmAd`          | Clear the work email address (`EmAd`)           |
+- **Resolutions are not supported**: This is a correlate-only connector. AFAS employees are never deleted, and an employee that is not managed by HelloID cannot be reliably distinguished from an employee outside the scope of HelloID. A delete triggered by reconciliation fails with an error. The reconciliation report can still be used to review employees with a work email address that are not managed by HelloID.
 
 ### Import
 
-The account entitlement import returns every employee in the GetConnector with a person number (`BcCo`), the same condition as the create action. The display name is `Nm` (fallback `EmId`) and the username is `EmAd`. `Enabled` is always `false`, because the connector has no enable or disable action.
+The account entitlement import is used for reconciliation, entitlement import and rule mining. It returns every employee in the GetConnector with a work email address (`EmAd`). An employee without a work email address is not an account, because the delete action clears `EmAd` by default. When the delete mapping is changed, the import filter must match the end state of the delete action. The display name is `Nm` (fallback `EmId`) and the username is `EmAd`. `Enabled` is always `false`, because the connector has no enable or disable action.
 
 ### Adding fields
 
@@ -223,11 +217,11 @@ For more information about updating a free field, please check the [AFAS documen
 
 The following endpoints are used by the connector.
 
-| Endpoint                      | HTTP Method | Description                   |
-|-------------------------------|-------------|-------------------------------|
-| profitrestservices/oauth/token | POST       | Retrieve an OAuth access token |
-| profitrestservices/connectors | GET         | Retrieve employee information |
-| profitrestservices/connectors | PUT         | Update employee information   |
+| Endpoint                       | HTTP Method | Description                    |
+|--------------------------------|-------------|--------------------------------|
+| profitrestservices/oauth/token | POST        | Retrieve an OAuth access token |
+| profitrestservices/connectors  | GET         | Retrieve employee information  |
+| profitrestservices/connectors  | PUT         | Update employee information    |
 
 ### API documentation
 

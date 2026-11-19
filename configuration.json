@@ -54,25 +54,5 @@
       "description": "Name of the AFAS UpdateConnector used for employee mutations.",
       "required": true
     }
-  },
-  {
-    "key": "DeleteMode",
-    "type": "select",
-    "defaultValue": "keepEmAd",
-    "templateOptions": {
-      "label": "Behavior on delete during a reconciliation action",
-      "description": "Applies only when delete is triggered by reconciliation (e.g. the account was removed from the source but still exists in AFAS). A regular delete action uses the field mapping instead.",
-      "options": [
-        {
-          "label": "Keep work email as is, no changes in AFAS",
-          "value": "keepEmAd"
-        },
-        {
-          "label": "Clear work email",
-          "value": "clearEmAd"
-        }
-      ],
-      "required": true
-    }
   }
 ]
