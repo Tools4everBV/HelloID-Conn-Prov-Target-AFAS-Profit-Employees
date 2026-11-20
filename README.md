@@ -1,4 +1,3 @@
-
 # HelloID-Conn-Prov-Target-AFAS-Profit-Employees
 
 > [!IMPORTANT]
@@ -13,55 +12,56 @@
 - [HelloID-Conn-Prov-Target-AFAS-Profit-Employees](#helloid-conn-prov-target-afas-profit-employees)
   - [Table of contents](#table-of-contents)
   - [Introduction](#introduction)
+  - [Supported features](#supported-features)
   - [Getting started](#getting-started)
     - [HelloID Icon URL](#helloid-icon-url)
-    - [Provisioning PowerShell V2 connector](#provisioning-powershell-v2-connector)
-      - [Correlation configuration](#correlation-configuration)
-      - [Field mapping](#field-mapping)
+    - [Requirements](#requirements)
     - [Connection settings](#connection-settings)
-    - [Prerequisites](#prerequisites)
-    - [Remarks](#remarks)
       - [Scope](#scope)
-  - [Setup the connector](#setup-the-connector)
-    - [Updating a custom field for AFAS employee](#updating-a-custom-field-for-afas-employee)
+    - [Correlation configuration](#correlation-configuration)
+    - [Field mapping](#field-mapping)
+    - [Account Reference](#account-reference)
+  - [Remarks](#remarks)
+    - [Breaking change in version 5.0.0](#breaking-change-in-version-500)
+    - [Private data](#private-data)
+    - [Employees are never created or deleted](#employees-are-never-created-or-deleted)
+    - [One row per employee](#one-row-per-employee)
+    - [Comma or semicolon in values](#comma-or-semicolon-in-values)
+    - [Create / correlate](#create--correlate)
+    - [Update](#update)
+    - [Delete](#delete)
+    - [Reconciliation](#reconciliation)
+    - [Import](#import)
+    - [Adding fields](#adding-fields)
+    - [Free fields](#free-fields)
+  - [Development resources](#development-resources)
+    - [API endpoints](#api-endpoints)
+    - [API documentation](#api-documentation)
   - [Getting help](#getting-help)
   - [HelloID docs](#helloid-docs)
 
 ## Introduction
 
-_HelloID-Conn-Prov-Target-AFAS-Profit-Employees is a _target_ connector. _AFAS-Profit-Employees_ provides a interface to communicate with Profit through a set of GetConnectors, which is component that allows the creation of custom views on the Profit data. GetConnectors are based on a pre-defined 'data collection', which is an existing view based on the data inside the Profit database. 
+_HelloID-Conn-Prov-Target-AFAS-Profit-Employees_ is a _target_ connector. _AFAS-Profit-Employees_ provides an interface to communicate with Profit through a set of GetConnectors, which is a component that allows the creation of custom views on the Profit data. GetConnectors are based on a pre-defined `'data collection'`, which is an existing view based on the data inside the Profit database.
 
-| Endpoint                      | Description |
-| ----------------------------- | ----------- |
-| profitrestservices/connectors |             |
+## Supported features
 
-Supported features:
-| Feature                             | Supported | Actions                                                                     | Remarks |
-| ----------------------------------- | --------- | --------------------------------------------------------------------------- | ------- |
-| **Account Lifecycle**               | ✅         | Create, Update, Delete                                                      |         |
-| **Permissions**                     | ❌         | -                                                                           |         |
-| **Resources**                       | ❌         | -                                                                           |         |
-| **Entitlement Import: Accounts**    | ✅         | -                                                                           |         |
-| **Entitlement Import: Permissions** | ❌         | -                                                                           |         |
+The following features are available:
 
-
-
-The following lifecycle actions are available:
-
-| Action             | Description                                                                                                     |
-| ------------------ | --------------------------------------------------------------------------------------------------------------- |
-| create.ps1         | PowerShell _correlate_ lifecycle action. Correlates                                                             |
-| update.ps1         | PowerShell _update_ lifecycle action. Update on correlate and update on update                                  |
-| delete.ps1         | PowerShell _delete_ lifecycle action. Clear the unique fields, since the values have to be unique over all AFAS |
-| configuration.json | Default _configuration.json_                                                                                    |
-| fieldMapping.json  | Default _fieldMapping.json_                                                                                     |
+| Feature                                   | Supported | Actions                | Remarks                               |
+|-------------------------------------------|-----------|------------------------|---------------------------------------|
+| **Account Lifecycle**                     | ✅         | Create, Update, Delete | Correlation only                      |
+| **Permissions**                           | ❌         | -                      |                                       |
+| **Resources**                             | ❌         | -                      |                                       |
+| **Entitlement Import: Accounts**          | ✅         | -                      |                                       |
+| **Entitlement Import: Permissions**       | ❌         | -                      |                                       |
+| **Governance Reconciliation Resolutions** | ❌         | -                      | See [Reconciliation](#reconciliation) |
 
 ## Getting started
 
-By using this connector you will have the ability to update employees in the AFAS Profit system.
+By using this connector you will have the ability to update employees in the AFAS Profit system, for example to write back the work email address.
 
-Connecting to Profit is done using the app connector system with OAuth client credentials.
-Please see the following pages from the AFAS Knowledge Base for more information.
+Connecting to Profit is done using the app connector system with OAuth client credentials. Please see the following pages from the AFAS Knowledge Base for more information.
 
 [Create the APP connector](https://help.afas.nl/help/NL/SE/App_Apps_Custom_Add.htm)
 
@@ -70,164 +70,164 @@ Please see the following pages from the AFAS Knowledge Base for more information
 [Configure OAuth on the APP connector](https://help.afas.nl/help/NL/SE/120718.htm#o136210)
 
 ### HelloID Icon URL
+
 URL of the icon used for the HelloID Provisioning target system.
 
 ```
 https://raw.githubusercontent.com/Tools4everBV/HelloID-Conn-Prov-Target-AFAS-Profit-Employees/refs/heads/main/Icon.png
 ```
 
-### Provisioning PowerShell V2 connector
+### Requirements
 
-#### Correlation configuration
-
-The correlation configuration is used to specify which properties will be used to match an existing account within _{connectorName}_ to a person in _HelloID_.
-
-To properly setup the correlation:
-
-1. Open the `Correlation` tab.
-
-2. Specify the following configuration:
-
-    | Setting                   | Value        |
-    | ------------------------- | ------------ |
-    | Enable correlation        | `True`       |
-    | Person correlation field  | ``           |
-    | Account correlation field | `Medewerker` |
+- HelloID Provisioning agent (cloud or on-prem).
+- Loaded and available AFAS GetConnector `T4E_HelloID_Target_Employees`.
+- In addition to the above GetConnector, the connector also uses the following built-in Profit update-connector:
+  - KnEmployee
+- AFAS App Connector with access to the GetConnector and associated views.
+  - OAuth client id
+  - OAuth client secret
 
 > [!TIP]
-> _For more information on correlation, please refer to our correlation [documentation](https://docs.helloid.com/en/provisioning/target-systems/powershell-v2-target-systems/correlation.html) pages_.
+> For this connector we have created a default GetConnector [Tools4ever - HelloID - T4E_HelloID_Target_Employees.gcn], which can be imported directly into the AFAS Profit environment.
 
-#### Field mapping
+The field ids of the GetConnector are equal to the AFAS field codes of `KnEmployee` / `KnPerson`. This allows the scripts to compare the field mapping with AFAS without a translation table. The GetConnector must return a single row per employee, see [One row per employee](#one-row-per-employee).
 
-The field mapping can be imported by using the [_fieldMapping.json_](./fieldMapping.json) file.
-
-> [!TIP]
-> `EmailPortal`, `TeNr` and `MbNr` are fields that can be mapped. Typically these are not fields that HelloID Provisioning needs to write back.
+| Field id    | AFAS description | Usage                                     |
+|-------------|------------------|-------------------------------------------|
+| EmId        | Medewerker       | Correlation and account reference         |
+| BcCo        | Persoonsnummer   | Match of the person in the update payload |
+| Nm          | Naam             | Display name in the account import        |
+| EmAd        | E-mail werk      | Mappable                                  |
+| EmailPortal | E-mail toegang   | Mappable                                  |
+| TeNr        | Telefoonnr. werk | Mappable                                  |
+| MbNr        | Mobiel werk      | Mappable                                  |
 
 ### Connection settings
 
 The following settings are required to connect to the API.
 
-| Setting                       | Description                                                                                                                                           | Mandatory |
-| ----------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- | --------- |
-| Base Uri                      | The URL to the AFAS environment REST services                                                                                                         | Yes       |
-| Client ID                     | The OAuth client id of the AppConnector                                                                                                               | Yes       |
-| Client Secret                 | The OAuth client secret of the AppConnector                                                                                                           | Yes       |
-| Get Connector                 | The GetConnector in AFAS to query the employee with                                                                                                   | Yes       |
-| Update Connector              | The UpdateConnector in AFAS to update the employee with                                                                                               | Yes       |
-| Update on update              | When toggled, if the mapped data differs from data in AFAS, the AFAS employee will be updated when a update is triggerd.                              |           |
-| Toggle debug logging          | When toggled, extra logging is shown. Note that this is only meant for debugging, please switch this off when in production.                          |           |
-
-### Prerequisites
-
-- [ ] HelloID Provisioning agent (cloud or on-prem).
-- [ ] Loaded and available AFAS GetConnectors.
-- [ ] In addition to use to the above get-connector, the connector also uses the following build-in Profit update-connectors:
-*	KnEmployee
-- [ ] AFAS App Connector with access to the GetConnectors and associated views.
-  - [ ] OAuth client id
-  - [ ] OAuth client secret
-
-> [!TIP]
-> For this connector we have created a default set [Tools4ever - HelloID - T4E_HelloID_Users_v2.gcn], which can be imported directly into the AFAS Profit environment.
-
-> [!NOTE]
-> When the connector is defined as target system, only the following GetConnector is used by HelloID:
-> * 	Tools4ever - HelloID - T4E_HelloID_Users_v2
-
-### Remarks
-
-> [!IMPORTANT]
-> In view of GDPR, the persons private data, such as private email address and birthdate are not in the data collection by default. When needed for the implementation (e.g. set emailaddress with private email address on delete), these properties will have to be added.
-
-> [!IMPORTANT]
-> We never delete employees in AFAS, we only clear the unique fields.
+| Setting         | Description                                             | Mandatory |
+|-----------------|---------------------------------------------------------|-----------|
+| Base Uri        | The URL to the AFAS environment REST services           | Yes       |
+| Client ID       | The OAuth client id of the AppConnector                 | Yes       |
+| Client Secret   | The OAuth client secret of the AppConnector             | Yes       |
+| GetConnector    | The GetConnector in AFAS to query the employee with     | Yes       |
+| UpdateConnector | The UpdateConnector in AFAS to update the employee with | Yes       |
 
 #### Scope
-The data collection retrieved by the set of GetConnector's is sufficient for HelloID to provision persons.
-The data collection can be changed by the customer itself to meet their requirements.
 
-| Connector                                       | Field               | Default filter            |
-| ----------------------------------------------- | ------------------- | ------------------------- |
-| __Tools4ever - HelloID - T4E_HelloID_Users_v2__ | contract start date | <[Vandaag + 3 maanden]    |
-|                                                 | contract end date   | >[Vandaag - 3 maanden];[] |
+The data collection retrieved by the GetConnector is sufficient for HelloID to provision persons. The data collection can be changed by the customer itself to meet their requirements.
 
+| Connector                                               | Field               | Default filter            |
+|---------------------------------------------------------|---------------------|---------------------------|
+| __Tools4ever - HelloID - T4E_HelloID_Target_Employees__ | contract start date | <[Vandaag + 3 maanden]    |
+|                                                         | contract end date   | >[Vandaag - 3 maanden];[] |
 
+### Correlation configuration
 
-## Setup the connector
+The correlation configuration is used to specify which properties will be used to match an existing account within _AFAS Profit_ to a person in _HelloID_.
+
+| Setting                   | Value                             |
+|---------------------------|-----------------------------------|
+| Enable correlation        | `True`                            |
+| Person correlation field  | `PersonContext.Person.ExternalId` |
+| Account correlation field | `EmId`                            |
 
 > [!TIP]
-> `EmailPortal` is typically set on the AFAS user. We have a separate [target connector](https://github.com/Tools4everBV/HelloID-Conn-Prov-Target-AFAS-Profit-Users) for managing AFAS users 
+> _For more information on correlation, please refer to our correlation [documentation](https://docs.helloid.com/en/provisioning/target-systems/powershell-v2-target-systems/correlation.html) pages_.
 
-### Updating a custom field for AFAS employee
-In certain situations, you want to write certain information back to a custom field in AFAS. The example below explains how to add this to the code.
+### Field mapping
 
-For more information about updating a custom field for AFAS employees. Please check the [AFAS documentation](https://help.afas.nl/help/NL/SE/App_Cnnctr_Update_050.htms)
+The field mapping can be imported by using the [_fieldMapping.json_](./fieldMapping.json) file.
 
-If you want to compare the custom field with your field mapping. The custom field needs to be added to the `T4E_HelloID_Users_v2` GetConnector,
+| Field | Actions                | Description                                                               |
+|-------|------------------------|---------------------------------------------------------------------------|
+| EmId  | Create                 | Correlation on employee number                                            |
+| BcCo  | Create, Update         | Person number, filled by the scripts from AFAS. Never updated             |
+| EmAd  | Create, Update, Delete | Work email address. Cleared on delete, as it has to be unique within AFAS |
 
-```powershell
-$updateAccount = [PSCustomObject]@{
-    'AfasEmployee' = @{
-        'Element' = @{
-            '@EmId'   = $currentAccount.Medewerker
-            'Fields'  = @{ 
-                '<YOUR GUID / UUID CODE FROM AFAS>' = $account.fieldNameAFAS
-            }
-            'Objects' = @(@{
-                    'KnPerson' = @{
-                        'Element' = @{
-                            'Fields' = @{
-                                # Zoek op BcCo (Persoons-ID)
-                                'MatchPer' = 0
-                                # Nummer
-                                'BcCo'     = $currentAccount.Persoonsnummer
-                            }
-                        }
-                    }
-                })
-        }
-    }
-}
-```
+### Account Reference
+
+The account reference is populated with the `EmId` property (employee number) from _AFAS Profit_. The `BcCo` property (person number) is retrieved from AFAS in every action and is used to match the person in the update payload.
+
+## Remarks
+
+### Breaking change in version 5.0.0
+
+> [!WARNING]
+> Version 5.0.0 is **not backward compatible** with version 4.x. The account reference, the correlation field, the GetConnector, the field mapping and the configuration have changed. Upgrade with a clean go-live of the connector, see [MIGRATION.md](./MIGRATION.md).
+
+### Private data
+
+- **GDPR**: The private data of persons, such as the private e-mail address and birth date, is not in the data collection by default. When it is needed for the implementation (for example the private e-mail address on delete), these properties have to be added.
+
+### Employees are never created or deleted
+
+- **Correlate only**: The connector only correlates existing employees and updates the mapped fields. Employees are never created or deleted in AFAS.
+
+### One row per employee
+
+- **Unique employee number**: The GetConnector must return a single row per employee (`EmId`). When multiple rows are found for the same `EmId`, the update and delete actions fail.
+
+### Comma or semicolon in values
+
+- **Filter values**: Account reference values and correlation values that contain a comma or semicolon are rejected, because AFAS uses these characters to separate filter values.
+
+### Create / correlate
+
+The create action only correlates. It searches the employee on `EmId` with a non-empty `BcCo`. When no employee or multiple employees are found, the action fails. The create action does not write to AFAS; HelloID performs an update directly after correlation.
+
+### Update
+
+The update action only sends the changed fields. An empty (`""`) or `null` mapped value clears the field in AFAS. Mapped fields that are not available in the GetConnector cannot be compared and are skipped.
+
+### Delete
+
+The delete action writes all fields of the delete mapping (by default an empty `EmAd`), including empty values, so fields can be cleared. When the employee is not found, the action is treated as successful.
+
+### Reconciliation
+
+- **Resolutions are not supported**: This is a correlate-only connector. AFAS employees are never deleted, and an employee that is not managed by HelloID cannot be reliably distinguished from an employee outside the scope of HelloID. A delete triggered by reconciliation fails with an error. The reconciliation report can still be used to review employees with a work email address that are not managed by HelloID.
+
+### Import
+
+The account entitlement import is used for reconciliation, entitlement import and rule mining. It returns every employee in the GetConnector with a work email address (`EmAd`). An employee without a work email address is not an account, because the delete action clears `EmAd` by default. When the delete mapping is changed, the import filter must match the end state of the delete action. The display name is `Nm` (fallback `EmId`) and the username is `EmAd`. `Enabled` is always `false`, because the connector has no enable or disable action.
+
+### Adding fields
+
+To update an additional field, for example `TeNr`:
+
+1. Add the field to the GetConnector with the AFAS field code as field id (e.g. `TeNr`).
+2. Add the field to the field mapping with the same name.
+
+No script changes are needed. Fields are written to `KnPerson`.
+
+### Free fields
+
+Free fields on the employee (field code `U` followed by a GUID, e.g. `U4F2A9C0E1B7D4E3A8F6C5B2D1E0A9F8C`) are recognized by their name and written to the `AfasEmployee` element instead of `KnPerson`. Add them to the GetConnector and field mapping in the same way as described above.
+
 > [!NOTE]
-> Because mapped values are typically added in the body of 'KnPerson' you need to skip the `$account.fieldNameAFAS` from adding it to the `$AfasEmployee` body. Also, you need to add the field to `$updateAccountFields` and `$previousAccount`. Example:
+> Free fields on the person (`KnPerson`) are not supported out of the box, as they are also written to the `AfasEmployee` element. This requires a custom change.
 
-```powershell
-$updateAccountFields = @()
-if ($account.PSObject.Properties.Name -Contains 'fieldNameAFAS') {
-    $updateAccountFields += "fieldNameAFAS"
-}
-```
+For more information about updating a free field, please check the [AFAS documentation](https://help.afas.nl/help/NL/SE/App_Cnnctr_Update_050.htm).
 
-```powershell
-# Retrieve current account data for properties to be updated
-$previousAccount = [PSCustomObject]@{
-    # E-Mail werk  
-    'EmAd'        = $currentAccount.Email_werk
-    # E-mail toegang
-    'EmailPortal' = $currentAccount.Email_portal
-    # Telefoonnr. werk
-    'TeNr'        = $currentAccount.Telefoonnr_werk
-    # Mobiel werk
-    'MbNr'        = $currentAccount.Mobielnr_werk
-    # Overtime
-    'fieldNameAFAS'    = $currentAccount.Overtime
-}
-```
+## Development resources
 
-```powershell
-foreach ($newProperty in $newProperties ) {
-    if ($newProperty.name -ne 'fieldNameAFAS') {
-        $updateAccount.AfasEmployee.Element.Objects[0].KnPerson.Element.Fields.$($newProperty.Name) = $newProperty.Value
-    }                 
-}
-```
+### API endpoints
 
+The following endpoints are used by the connector.
 
+| Endpoint                       | HTTP Method | Description                    |
+|--------------------------------|-------------|--------------------------------|
+| profitrestservices/oauth/token | POST        | Retrieve an OAuth access token |
+| profitrestservices/connectors  | GET         | Retrieve employee information  |
+| profitrestservices/connectors  | PUT         | Update employee information    |
 
-> [!TIP]
-> If you need more information please check out our [forum post](https://forum.helloid.com/forum/helloid-provisioning/1261-updating-a-custom-field-for-afas-employee).
+### API documentation
+
+[AFAS App Connector documentation](https://help.afas.nl/help/NL/SE/App_Apps_Custom_Add.htm)
+
+[KnEmployee update connector](https://help.afas.nl/help/NL/SE/App_Conect_UpdDsc_KnEmployee.htm)
 
 ## Getting help
 
@@ -235,7 +235,7 @@ foreach ($newProperty in $newProperties ) {
 > _For more information on how to configure a HelloID PowerShell connector, please refer to our [documentation](https://docs.helloid.com/en/provisioning/target-systems/powershell-v2-target-systems.html) pages_.
 
 > [!TIP]
->  _If you need help, feel free to ask questions on our [forum](https://forum.helloid.com)_.
+> _If you need help, feel free to ask questions on our [forum](https://forum.helloid.com)_.
 
 ## HelloID docs
 

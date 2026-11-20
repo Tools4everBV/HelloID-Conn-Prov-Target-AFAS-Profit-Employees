@@ -3,385 +3,234 @@
 # PowerShell V2
 #####################################################
 
-# Set to true at start, because only when an error occurs it is set to false
-$outputContext.Success = $true
-
-# Set debug logging
-switch ($($actionContext.Configuration.isDebug)) {
-    $true { $VerbosePreference = 'Continue' }
-    $false { $VerbosePreference = 'SilentlyContinue' }
-}
-
 # Enable TLS1.2
 [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor [System.Net.SecurityProtocolType]::Tls12
 
 #region functions
-function Resolve-HTTPError {
+function Resolve-AFASProfitError {
     [CmdletBinding()]
     param (
-        [Parameter(Mandatory,
-            ValueFromPipeline
-        )]
-        [object]$ErrorObject
+        [Parameter(Mandatory)]
+        [object]
+        $ErrorObject
     )
     process {
         $httpErrorObj = [PSCustomObject]@{
-            FullyQualifiedErrorId = $ErrorObject.FullyQualifiedErrorId
-            MyCommand             = $ErrorObject.InvocationInfo.MyCommand
-            RequestUri            = $ErrorObject.TargetObject.RequestUri
-            ScriptStackTrace      = $ErrorObject.ScriptStackTrace
-            ErrorMessage          = ''
+            ScriptLineNumber = $ErrorObject.InvocationInfo.ScriptLineNumber
+            Line             = $ErrorObject.InvocationInfo.Line
+            ErrorDetails     = $ErrorObject.Exception.Message
+            FriendlyMessage  = $ErrorObject.Exception.Message
         }
-        if ($ErrorObject.Exception.GetType().FullName -eq 'Microsoft.PowerShell.Commands.HttpResponseException') {
-            $httpErrorObj.ErrorMessage = $ErrorObject.ErrorDetails.Message
+        if (-not [string]::IsNullOrEmpty($ErrorObject.ErrorDetails.Message)) {
+            $httpErrorObj.ErrorDetails = $ErrorObject.ErrorDetails.Message
         }
         elseif ($ErrorObject.Exception.GetType().FullName -eq 'System.Net.WebException') {
-            $httpErrorObj.ErrorMessage = [System.IO.StreamReader]::new($ErrorObject.Exception.Response.GetResponseStream()).ReadToEnd()
+            if ($null -ne $ErrorObject.Exception.Response) {
+                $streamReaderResponse = [System.IO.StreamReader]::new($ErrorObject.Exception.Response.GetResponseStream()).ReadToEnd()
+                if (-not [string]::IsNullOrEmpty($streamReaderResponse)) {
+                    $httpErrorObj.ErrorDetails = $streamReaderResponse
+                }
+            }
+        }
+        try {
+            $errorDetailsObject = ($httpErrorObj.ErrorDetails | ConvertFrom-Json)
+            if ($null -ne $errorDetailsObject.externalMessage) {
+                $httpErrorObj.FriendlyMessage = $errorDetailsObject.externalMessage
+            }
+            else {
+                $httpErrorObj.FriendlyMessage = $errorDetailsObject
+            }
+        }
+        catch {
+            $httpErrorObj.FriendlyMessage = "[$($httpErrorObj.ErrorDetails)]"
         }
         Write-Output $httpErrorObj
     }
 }
+#endregion
 
-function Resolve-AFASErrorMessage {
-    [CmdletBinding()]
-    param (
-        [Parameter(Mandatory,
-            ValueFromPipeline
-        )]
-        [object]$ErrorObject
-    )
-    process {
-        try {
-            $errorObjectConverted = $ErrorObject | ConvertFrom-Json -ErrorAction Stop
-
-            if ($null -ne $errorObjectConverted.externalMessage) {
-                $errorMessage = $errorObjectConverted.externalMessage
-            }
-            else {
-                $errorMessage = $errorObjectConverted
-            }
-        }
-        catch {
-            $errorMessage = "$($ErrorObject.Exception.Message)"
-        }
-
-        Write-Output $errorMessage
-    }
-}
-
-function Get-ErrorMessage {
-    [CmdletBinding()]
-    param (
-        [Parameter(Mandatory,
-            ValueFromPipeline
-        )]
-        [object]$ErrorObject
-    )
-    process {
-        $errorMessage = [PSCustomObject]@{
-            VerboseErrorMessage = $null
-            AuditErrorMessage   = $null
-        }
-
-        if ( $($ErrorObject.Exception.GetType().FullName -eq 'Microsoft.PowerShell.Commands.HttpResponseException') -or $($ErrorObject.Exception.GetType().FullName -eq 'System.Net.WebException')) {
-            $httpErrorObject = Resolve-HTTPError -ErrorObject $ErrorObject
-            
-            if (-not[String]::IsNullOrEmpty($httpErrorObject.ErrorMessage)) {
-                $errorMessage.VerboseErrorMessage = $httpErrorObject.ErrorMessage
-                $errorMessage.AuditErrorMessage = Resolve-AFASErrorMessage -ErrorObject $httpErrorObject.ErrorMessage
-            }
-            else {
-                $errorMessage.VerboseErrorMessage = $ErrorObject.Exception.Message
-                $errorMessage.AuditErrorMessage = $ErrorObject.Exception.Message
-            }
-        }
-        
-        # If error message empty, fall back on $ex.Exception.Message
-        if ([String]::IsNullOrEmpty($errorMessage.VerboseErrorMessage)) {
-            $errorMessage.VerboseErrorMessage = $ErrorObject.Exception.Message
-        }
-        if ([String]::IsNullOrEmpty($errorMessage.AuditErrorMessage)) {
-            $errorMessage.AuditErrorMessage = $ErrorObject.Exception.Message
-        }
-
-        Write-Output $errorMessage
-    }
-}
-#endregion functions
-
-# Get current account and verify if there are changes
 try {
-    $account = $actionContext.Data
-
-    $correlationProperty = $actionContext.CorrelationConfiguration.accountField
-    $correlationValue = $actionContext.References.Account.Medewerker # Has to match the AFAS value of the specified filter field ($filterfieldid)
-      
-    $updateAccountFields = @()
-    if ($account.PSObject.Properties.Name -Contains 'EmAd') {
-        $updateAccountFields += "EmAd"
-    }
-    if ($account.PSObject.Properties.Name -Contains 'EmailPortal') {
-        $updateAccountFields += "EmailPortal"
-    }
-    if ($account.PSObject.Properties.Name -Contains 'TeNr') {
-        $updateAccountFields += "TeNr"
-    }
-    if ($account.PSObject.Properties.Name -Contains 'MbNr') {
-        $updateAccountFields += "MbNr"
-    }
-
-    # Verify if [aRef] has a value
+    # Verify if [accountReference] has a value
     if ([string]::IsNullOrEmpty($($actionContext.References.Account))) {
-        $outputContext.AuditLogs.Add([PSCustomObject]@{
-                Action  = "UpdateAccount"
-                Message = "The account reference could not be found"
-                IsError = $true
-            })
-            
         throw 'The account reference could not be found'
     }
-
-
-    try {
-        Write-Verbose "Querying AFAS employee where [$($correlationProperty)] = [$($correlationValue)]"
-
-        # Create authorization headers using OAuth client credentials
-        $tokenUri = "$($actionContext.Configuration.BaseUri)/oauth/token"
-        Write-Verbose "Requesting OAuth access token from [$tokenUri]"
-
-        $tokenRequestBody = @{
-            grant_type    = 'client_credentials'
-            client_id     = $actionContext.Configuration.ClientId
-            client_secret = $actionContext.Configuration.ClientSecret
-        }
-
-        $tokenResponse = Invoke-RestMethod -Method Post -Uri $tokenUri -Body $tokenRequestBody -ContentType 'application/x-www-form-urlencoded' -UseBasicParsing -Verbose:$false
-
-        if ([String]::IsNullOrWhiteSpace([String]$tokenResponse.access_token)) {
-            throw "OAuth token endpoint did not return an access_token."
-        }
-
-        if ([String]::IsNullOrWhiteSpace([String]$tokenResponse.token_type) -or ([String]$tokenResponse.token_type).ToLowerInvariant() -ne 'bearer') {
-            throw "OAuth token endpoint returned an unexpected token_type [$($tokenResponse.token_type)]. Expected [Bearer]."
-        }
-
-        $Headers = @{ Authorization = "$($tokenResponse.token_type) $($tokenResponse.access_token)" }
-        $Headers.Add("IntegrationId", "45963_140664") # Fixed value - Tools4ever Partner Integration ID
-
-        $splatWebRequest = @{
-            Uri             = "$($actionContext.Configuration.BaseUri)/connectors/$($actionContext.Configuration.GetConnector)?filterfieldids=$($correlationProperty)&filtervalues=$($correlationValue)&operatortypes=1"
-            Headers         = $headers
-            Method          = 'GET'
-            ContentType     = "application/json;charset=utf-8"
-            UseBasicParsing = $true
-        }
-        $currentAccount = (Invoke-RestMethod @splatWebRequest -Verbose:$false).rows
-
-        if ($null -eq $currentAccount.Medewerker) {
-            throw "No AFAS employee found AFAS employee where [$($correlationProperty)] = [$($correlationValue)]"
-        }
-
-        # Retrieve current account data for properties to be updated
-        $previousAccount = [PSCustomObject]@{
-            # E-Mail werk  
-            'EmAd'        = $currentAccount.Email_werk
-            # E-mail toegang
-            'EmailPortal' = $currentAccount.Email_portal
-            # Telefoonnr. werk
-            'TeNr'        = $currentAccount.Telefoonnr_werk
-            # Mobiel werk
-            'MbNr'        = $currentAccount.Mobielnr_werk
-        }
-
-        # Calculate changes between current data and provided data
-        $splatCompareProperties = @{
-            ReferenceObject  = @($previousAccount.PSObject.Properties | Where-Object { $_.Name -in $updateAccountFields }) # Only select the properties to update
-            DifferenceObject = @($account.PSObject.Properties | Where-Object { $_.Name -in $updateAccountFields }) # Only select the properties to update
-        }
-        $changedProperties = $null
-        $changedProperties = (Compare-Object @splatCompareProperties -PassThru)
-        $oldProperties = $changedProperties.Where( { $_.SideIndicator -eq '<=' })
-        $newProperties = $changedProperties.Where( { $_.SideIndicator -eq '=>' })
-
-        if (($newProperties | Measure-Object).Count -ge 1) {
-            Write-Verbose "Changed properties: $($changedProperties | ConvertTo-Json)"
-
-            $updateAction = 'Update'
-        }
-        else {
-            Write-Verbose "No changed properties"
-        
-            $updateAction = 'NoChanges'
-        }
-    }
-    catch {
-        $ex = $PSItem
-        $errorMessage = Get-ErrorMessage -ErrorObject $ex
-
-        Write-Verbose "Error at Line [$($ex.InvocationInfo.ScriptLineNumber)]: $($ex.InvocationInfo.Line). Error: $($errorMessage.VerboseErrorMessage)"
-
-        if ($errorMessage.AuditErrorMessage -Like "No AFAS employee found*") {
-            $outputContext.AuditLogs.Add([PSCustomObject]@{
-                    Action  = "DeleteAccount"
-                    Message = "No AFAS employee found where [$($correlationProperty)] = [$($correlationValue)]. Possibly deleted."
-                    IsError = $false
-                })
-        }
-        else {
-            $outputContext.AuditLogs.Add([PSCustomObject]@{
-                    Action  = "DeleteAccount"
-                    Message = "Error querying AFAS employee where [$($correlationProperty)] = [$($correlationValue)]. Error Message: $($errorMessage.AuditErrorMessage)"
-                    IsError = $true
-                })
-
-            # Skip further actions, as this is a critical error
-            throw "Error querying AFAS employee"
-        }
+    if ($actionContext.References.Account -match '[,;]') {
+        throw 'Account reference contains a comma or semicolon, which cannot be used in AFAS filter values'
     }
 
-    switch ($updateAction) {
-        'Update' {
-            # Update AFAS Employee
-            try {
-                # Create custom object with old and new values
-                $changedPropertiesObject = [PSCustomObject]@{
-                    OldValues = @{}
-                    NewValues = @{}
-                }
+    # Reconciliation resolutions are not supported. AFAS employees are never deleted, and an employee that is not managed by HelloID cannot be reliably distinguished from an employee outside the scope of HelloID.
+    if ($actionContext.Origin -eq 'reconciliation') {
+        throw 'Delete triggered by reconciliation is not supported for this correlate-only connector. AFAS employees are never deleted.'
+    }
 
-                # Add the old properties to the custom object with old and new values
-                foreach ($oldProperty in ($oldProperties | Where-Object { $_.Name -in $newProperties.Name })) {
-                    $changedPropertiesObject.OldValues.$($oldProperty.Name) = $oldProperty.Value
-                }
+    Write-Information 'Verifying if an AFAS Profit employee exists'
 
-                # Add the new properties to the custom object with old and new values
-                foreach ($newProperty in $newProperties) {
-                    $changedPropertiesObject.NewValues.$($newProperty.Name) = $newProperty.Value
-                }
-                Write-Verbose "Changed properties: $($changedPropertiesObject | ConvertTo-Json)"
+    # Create authorization headers using OAuth client credentials
+    $tokenUri = "$($actionContext.Configuration.BaseUri)/oauth/token"
+    Write-Verbose "Requesting OAuth access token from [$tokenUri]"
 
-                # Create custom account object for update and set with default properties and values
-                $updateAccount = [PSCustomObject]@{
-                    'AfasEmployee' = @{
-                        'Element' = @{
-                            '@EmId'   = $currentAccount.Medewerker
-                            'Objects' = @(@{
-                                    'KnPerson' = @{
-                                        'Element' = @{
-                                            'Fields' = @{
-                                                # Zoek op BcCo (Persoons-ID)
-                                                'MatchPer' = 0
-                                                # Nummer
-                                                'BcCo'     = $currentAccount.Persoonsnummer
-                                            }
-                                        }
-                                    }
-                                })
+    $tokenRequestBody = @{
+        grant_type    = 'client_credentials'
+        client_id     = $actionContext.Configuration.ClientId
+        client_secret = $actionContext.Configuration.ClientSecret
+    }
+
+    $tokenResponse = Invoke-RestMethod -Method Post -Uri $tokenUri -Body $tokenRequestBody -ContentType 'application/x-www-form-urlencoded' -UseBasicParsing -ErrorAction Stop -Verbose:$false
+
+    if ([String]::IsNullOrWhiteSpace([String]$tokenResponse.access_token)) {
+        throw 'OAuth token endpoint did not return an access_token.'
+    }
+
+    if ([String]::IsNullOrWhiteSpace([String]$tokenResponse.token_type) -or ([String]$tokenResponse.token_type).ToLowerInvariant() -ne 'bearer') {
+        throw "OAuth token endpoint returned an unexpected token_type [$($tokenResponse.token_type)]. Expected [Bearer]."
+    }
+
+    $headers = @{
+        Authorization = "$($tokenResponse.token_type) $($tokenResponse.access_token)"
+        IntegrationId = '45963_140664' # Fixed value - Tools4ever Partner Integration ID
+    }
+
+    $splatQueryParams = @{
+        Uri             = "$($actionContext.Configuration.BaseUri)/connectors/$($actionContext.Configuration.GetConnector)?filterfieldids=EmId&filtervalues=$([uri]::EscapeDataString($actionContext.References.Account))&operatortypes=1"
+        Headers         = $headers
+        Method          = 'GET'
+        ContentType     = 'application/json;charset=utf-8'
+        UseBasicParsing = $true
+        ErrorAction     = 'Stop'
+    }
+
+    $correlatedAccount = @((Invoke-RestMethod @splatQueryParams).rows)
+
+    if ($correlatedAccount.Count -eq 1) {
+        $correlatedAccount = $correlatedAccount[0]
+        $outputContext.PreviousData = $correlatedAccount | Select-Object -Property $outputContext.Data.PSObject.Properties.Name
+
+        if ([string]::IsNullOrWhiteSpace([string]$correlatedAccount.BcCo)) {
+            throw 'Correlated AFAS employee is missing required person number [BcCo]. Verify the AFAS GetConnector output.'
+        }
+
+        # All mapped fields are sent, AFAS accepts a field that is set to its current value. EmId is the element key and BcCo is only used to match KnPerson. Both are never updated by HelloID.
+        $fieldsToUpdate = @($actionContext.Data.PSObject.Properties | Where-Object { $_.Name -notin @('EmId', 'BcCo') })
+
+        if ($fieldsToUpdate.Count -gt 0) {
+            $lifecycleProcess = 'DeleteAccount'
+        }
+        else {
+            $lifecycleProcess = 'NoChanges'
+        }
+    }
+    elseif ($correlatedAccount.Count -gt 1) {
+        throw "Multiple AFAS Profit employees found with accountReference: [$($actionContext.References.Account)]"
+    }
+    else {
+        $lifecycleProcess = 'NotFound'
+    }
+
+    # Process
+    switch ($lifecycleProcess) {
+        'DeleteAccount' {
+            $fieldsInPayload = $fieldsToUpdate.Name -join ', '
+
+            # Free fields (U + GUID) of the employee belong on the AfasEmployee element, all other fields on the KnPerson element.
+            $employeeFields = [ordered]@{}
+            $personFields = [ordered]@{
+                MatchPer = 0 # Match the person on BcCo
+                BcCo     = $correlatedAccount.BcCo
+            }
+            foreach ($property in $fieldsToUpdate) {
+                # AFAS clears text fields with an empty string, not with JSON null.
+                $value = if ($null -eq $property.Value) { '' } else { $property.Value }
+                if ($property.Name -match '^U[0-9A-Fa-f]{32}$') {
+                    $employeeFields[$property.Name] = $value
+                }
+                else {
+                    $personFields[$property.Name] = $value
+                }
+            }
+
+            $element = [ordered]@{
+                '@EmId' = $correlatedAccount.EmId
+            }
+            if ($employeeFields.Count -gt 0) {
+                $element['Fields'] = $employeeFields
+            }
+            $element['Objects'] = @(
+                @{
+                    KnPerson = @{
+                        Element = @{
+                            Fields = $personFields
                         }
                     }
                 }
+            )
 
-                # Add the updated properties to the custom account object for update - Only add changed properties. AFAS will throw an error when trying to update this with the same value
-                foreach ($newProperty in $newProperties ) {
-                    $updateAccount.AfasEmployee.Element.Objects[0].KnPerson.Element.Fields.$($newProperty.Name) = $newProperty.Value
-                }
-
-                $body = ($updateAccount | ConvertTo-Json -Depth 10)
-                $splatWebRequest = @{
-                    Uri             = "$($actionContext.Configuration.BaseUri)/connectors/$($actionContext.Configuration.UpdateConnector)"
-                    Headers         = $headers
-                    Method          = 'PUT'
-                    Body            = ([System.Text.Encoding]::UTF8.GetBytes($body))
-                    ContentType     = "application/json;charset=utf-8"
-                    UseBasicParsing = $true
-                }
-
-                if (-Not($actionContext.DryRun -eq $true)) {
-                    Write-Verbose "Updating AFAS employee [$($currentAccount.Medewerker)]. Old values: $($changedPropertiesObject.oldValues | ConvertTo-Json -Depth 10). New values: $($changedPropertiesObject.newValues | ConvertTo-Json -Depth 10)"
-                    
-                    $updatedAccount = Invoke-RestMethod @splatWebRequest -Verbose:$false
-
-                    # Set aRef object for use in futher actions
-                    $aRef = [PSCustomObject]@{
-                        Medewerker     = $currentAccount.Medewerker
-                        Persoonsnummer = $currentAccount.Persoonsnummer
-                    }
-                    
-                    $outputContext.AuditLogs.Add([PSCustomObject]@{
-                            Action  = "DeleteAccount"
-                            Message = "Successfully updated AFAS employee [$($currentAccount.Medewerker)]. Old values: $($changedPropertiesObject.oldValues | ConvertTo-Json -Depth 10). New values: $($changedPropertiesObject.newValues | ConvertTo-Json -Depth 10)"
-                            IsError = $false
-                        })
-                }
-                else {
-                    Write-Warning "DryRun: Would update AFAS employee [$($currentAccount.Medewerker)]. Old values: $($changedPropertiesObject.oldValues | ConvertTo-Json -Depth 10). New values: $($changedPropertiesObject.newValues | ConvertTo-Json -Depth 10)"
-                }
+            $body = ([PSCustomObject]@{ AfasEmployee = @{ Element = $element } } | ConvertTo-Json -Depth 10)
+            $splatUpdateParams = @{
+                Uri             = "$($actionContext.Configuration.BaseUri)/connectors/$($actionContext.Configuration.UpdateConnector)"
+                Headers         = $headers
+                Method          = 'PUT'
+                Body            = ([System.Text.Encoding]::UTF8.GetBytes($body))
+                ContentType     = 'application/json;charset=utf-8'
+                UseBasicParsing = $true
+                ErrorAction     = 'Stop'
             }
-            catch {
-                $ex = $PSItem
-                $errorMessage = Get-ErrorMessage -ErrorObject $ex
-                
-                Write-Verbose "Error at Line '$($ex.InvocationInfo.ScriptLineNumber)': $($ex.InvocationInfo.Line). Error: $($errorMessage.VerboseErrorMessage)"
-            
-                $outputContext.AuditLogs.Add([PSCustomObject]@{
-                        Action  = "DeleteAccount"
-                        Message = "Error updating AFAS employee [$($currentAccount.Medewerker)]. Error Message: $($errorMessage.AuditErrorMessage). Old values: $($changedPropertiesObject.oldValues | ConvertTo-Json -Depth 10). New values: $($changedPropertiesObject.newValues | ConvertTo-Json -Depth 10)"
-                        IsError = $true
-                    })
-                # Skip further actions, as this is a critical error
-                throw "Error updating AFAS employee"
-            }
-            break
-        }
-        'NoChanges' {
-            Write-Verbose "No changes needed for AFAS employee [$($currentAccount.Medewerker)]"
 
-            if (-Not($actionContext.DryRun -eq $true)) {
-                # Set aRef object for use in futher actions
-                $aRef = [PSCustomObject]@{
-                    Medewerker     = $currentAccount.Medewerker
-                    Persoonsnummer = $currentAccount.Persoonsnummer
-                }
-
-                $outputContext.AuditLogs.Add([PSCustomObject]@{
-                        Action  = "DeleteAccount"
-                        Message = "No changes needed for AFAS employee [$($currentAccount.Medewerker)]"
-                        IsError = $false
-                    })
+            if (-not($actionContext.DryRun -eq $true)) {
+                Write-Information "Deleting AFAS Profit employee with accountReference: [$($actionContext.References.Account)]. Update payload fields: [$fieldsInPayload]"
+                $null = Invoke-RestMethod @splatUpdateParams -Verbose:$false
+                $auditLogMessage = "Delete AFAS Profit employee with accountReference: [$($actionContext.References.Account)] was successful. Update payload fields: [$fieldsInPayload]"
             }
             else {
-                Write-Warning "DryRun: No changes needed for AFAS employee [$($currentAccount.Medewerker)]"
+                Write-Information "[DryRun] Delete AFAS Profit employee with accountReference: [$($actionContext.References.Account)], will be executed during enforcement. Update payload fields: [$fieldsInPayload]"
+                $auditLogMessage = "[DryRun] Would delete AFAS Profit employee with accountReference: [$($actionContext.References.Account)]. Update payload fields: [$fieldsInPayload]"
             }
 
+            $outputContext.Success = $true
+            $outputContext.AuditLogs.Add([PSCustomObject]@{
+                    Message = $auditLogMessage
+                    IsError = $false
+                })
+            break
+        }
+
+        'NoChanges' {
+            Write-Information "No changes to AFAS Profit employee with accountReference: [$($actionContext.References.Account)]"
+
+            $outputContext.Success = $true
+            $outputContext.AuditLogs.Add([PSCustomObject]@{
+                    Message = "Delete AFAS Profit employee with accountReference: [$($actionContext.References.Account)] was successful. No changes required in AFAS"
+                    IsError = $false
+                })
+            break
+        }
+
+        'NotFound' {
+            Write-Information "AFAS Profit employee: [$($actionContext.References.Account)] could not be found, indicating that it may have been deleted or is out of scope of the GetConnector"
+
+            $outputContext.Success = $true
+            $outputContext.AuditLogs.Add([PSCustomObject]@{
+                    Message = "AFAS Profit employee: [$($actionContext.References.Account)] could not be found, indicating that it may have been deleted or is out of scope of the GetConnector"
+                    IsError = $false
+                })
             break
         }
     }
 }
 catch {
+    $outputContext.Success = $false
     $ex = $PSItem
-    Write-Verbose "ERROR: $ex"
-}
-finally {
-    # If account is already removed, treat as successful.
-    $isPossiblyDeleted = ($outputContext.AuditLogs | Where-Object { $_.Message -like '*Possibly deleted*' }).Count -gt 0
-    if ($isPossiblyDeleted) {
-        $outputContext.Success = $true
+    if ($($ex.Exception.GetType().FullName -eq 'Microsoft.PowerShell.Commands.HttpResponseException') -or
+        $($ex.Exception.GetType().FullName -eq 'System.Net.WebException')) {
+        $errorObj = Resolve-AFASProfitError -ErrorObject $ex
+        $auditLogMessage = "Could not delete AFAS Profit employee: [$($actionContext.References.Account)]. Error: $($errorObj.FriendlyMessage)"
+        Write-Warning "Error at Line '$($errorObj.ScriptLineNumber)': $($errorObj.Line). Error: $($errorObj.ErrorDetails)"
     }
-    # Otherwise keep original behavior: any error log means failure.
-    elseif ($outputContext.AuditLogs.IsError -contains $true) {
-        $outputContext.Success = $false
+    else {
+        $auditLogMessage = "Could not delete AFAS Profit employee: [$($actionContext.References.Account)]. Error: $($ex.Exception.Message)"
+        Write-Warning "Error at Line '$($ex.InvocationInfo.ScriptLineNumber)': $($ex.InvocationInfo.Line). Error: $($ex.Exception.Message)"
     }
-    # Define ExportData with account fields and correlation property 
-    $exportData = if ($null -ne $account) { $account.PsObject.Copy() } else { [PSCustomObject]@{} }
-    # Add correlation property to exportdata
-    $exportData | Add-Member -MemberType NoteProperty -Name $correlationProperty -Value $correlationValue -Force
-    # Add aRef properties to exportdata
-    if ($null -ne $aRef) {
-        foreach ($aRefProperty in $aRef.PSObject.Properties) {
-            $exportData | Add-Member -MemberType NoteProperty -Name $aRefProperty.Name -Value $aRefProperty.Value -Force
-        }
-    }
-    $outputContext.AccountReference = $aRef
-    $outputContext.Data = $exportData
-    $outputContext.PreviousData = $previousAccount
+    $outputContext.AuditLogs.Add([PSCustomObject]@{
+            Message = $auditLogMessage
+            IsError = $true
+        })
 }
