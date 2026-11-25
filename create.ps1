@@ -3,212 +3,177 @@
 # PowerShell V2
 #####################################################
 
-# Set to true at start, because only when an error occurs it is set to false
-$outputContext.Success = $true
-
-# AccountReference must have a value for dryRun
-$outputContext.AccountReference = "Unknown"
-
-# Set debug logging
-switch ($($actionContext.Configuration.isDebug)) {
-    $true { $VerbosePreference = 'Continue' }
-    $false { $VerbosePreference = 'SilentlyContinue' }
-}
-
 # Enable TLS1.2
 [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor [System.Net.SecurityProtocolType]::Tls12
 
 #region functions
-function Resolve-HTTPError {
+function Resolve-AFASProfitError {
     [CmdletBinding()]
     param (
-        [Parameter(Mandatory,
-            ValueFromPipeline
-        )]
-        [object]$ErrorObject
+        [Parameter(Mandatory)]
+        [object]
+        $ErrorObject
     )
     process {
         $httpErrorObj = [PSCustomObject]@{
-            FullyQualifiedErrorId = $ErrorObject.FullyQualifiedErrorId
-            MyCommand             = $ErrorObject.InvocationInfo.MyCommand
-            RequestUri            = $ErrorObject.TargetObject.RequestUri
-            ScriptStackTrace      = $ErrorObject.ScriptStackTrace
-            ErrorMessage          = ''
+            ScriptLineNumber = $ErrorObject.InvocationInfo.ScriptLineNumber
+            Line             = $ErrorObject.InvocationInfo.Line
+            ErrorDetails     = $ErrorObject.Exception.Message
+            FriendlyMessage  = $ErrorObject.Exception.Message
         }
-        if ($ErrorObject.Exception.GetType().FullName -eq 'Microsoft.PowerShell.Commands.HttpResponseException') {
-            $httpErrorObj.ErrorMessage = $ErrorObject.ErrorDetails.Message
+        if (-not [string]::IsNullOrEmpty($ErrorObject.ErrorDetails.Message)) {
+            $httpErrorObj.ErrorDetails = $ErrorObject.ErrorDetails.Message
         }
         elseif ($ErrorObject.Exception.GetType().FullName -eq 'System.Net.WebException') {
-            $httpErrorObj.ErrorMessage = [System.IO.StreamReader]::new($ErrorObject.Exception.Response.GetResponseStream()).ReadToEnd()
+            if ($null -ne $ErrorObject.Exception.Response) {
+                $streamReaderResponse = [System.IO.StreamReader]::new($ErrorObject.Exception.Response.GetResponseStream()).ReadToEnd()
+                if (-not [string]::IsNullOrEmpty($streamReaderResponse)) {
+                    $httpErrorObj.ErrorDetails = $streamReaderResponse
+                }
+            }
+        }
+        try {
+            $errorDetailsObject = ($httpErrorObj.ErrorDetails | ConvertFrom-Json)
+            if ($null -ne $errorDetailsObject.externalMessage) {
+                $httpErrorObj.FriendlyMessage = $errorDetailsObject.externalMessage
+            }
+            else {
+                $httpErrorObj.FriendlyMessage = $errorDetailsObject
+            }
+        }
+        catch {
+            $httpErrorObj.FriendlyMessage = "[$($httpErrorObj.ErrorDetails)]"
         }
         Write-Output $httpErrorObj
     }
 }
+#endregion
 
-function Resolve-AFASErrorMessage {
-    [CmdletBinding()]
-    param (
-        [Parameter(Mandatory,
-            ValueFromPipeline
-        )]
-        [object]$ErrorObject
-    )
-    process {
-        try {
-            $errorObjectConverted = $ErrorObject | ConvertFrom-Json -ErrorAction Stop
-
-            if ($null -ne $errorObjectConverted.externalMessage) {
-                $errorMessage = $errorObjectConverted.externalMessage
-            }
-            else {
-                $errorMessage = $errorObjectConverted
-            }
-        }
-        catch {
-            $errorMessage = "$($ErrorObject.Exception.Message)"
-        }
-
-        Write-Output $errorMessage
-    }
-}
-
-function Get-ErrorMessage {
-    [CmdletBinding()]
-    param (
-        [Parameter(Mandatory,
-            ValueFromPipeline
-        )]
-        [object]$ErrorObject
-    )
-    process {
-        $errorMessage = [PSCustomObject]@{
-            VerboseErrorMessage = $null
-            AuditErrorMessage   = $null
-        }
-
-        if ( $($ErrorObject.Exception.GetType().FullName -eq 'Microsoft.PowerShell.Commands.HttpResponseException') -or $($ErrorObject.Exception.GetType().FullName -eq 'System.Net.WebException')) {
-            $httpErrorObject = Resolve-HTTPError -ErrorObject $ErrorObject
-            
-            if (-not[String]::IsNullOrEmpty($httpErrorObject.ErrorMessage)) {
-                $errorMessage.VerboseErrorMessage = $httpErrorObject.ErrorMessage
-                $errorMessage.AuditErrorMessage = Resolve-AFASErrorMessage -ErrorObject $httpErrorObject.ErrorMessage
-            }
-            else {
-                $errorMessage.VerboseErrorMessage = $ErrorObject.Exception.Message
-                $errorMessage.AuditErrorMessage = $ErrorObject.Exception.Message
-            }
-        }
-        
-        # If error message empty, fall back on $ex.Exception.Message
-        if ([String]::IsNullOrEmpty($errorMessage.VerboseErrorMessage)) {
-            $errorMessage.VerboseErrorMessage = $ErrorObject.Exception.Message
-        }
-        if ([String]::IsNullOrEmpty($errorMessage.AuditErrorMessage)) {
-            $errorMessage.AuditErrorMessage = $ErrorObject.Exception.Message
-        }
-
-        Write-Output $errorMessage
-    }
-}
-#endregion functions
-
-# Get current account and verify if there are changes
 try {
+    # Initial Assignments
+    $outputContext.AccountReference = 'Currently not available'
+
+    # Validate correlation configuration
     if ($actionContext.CorrelationConfiguration.Enabled) {
-        $correlationProperty = $actionContext.CorrelationConfiguration.accountField
-        $correlationValue = $actionContext.CorrelationConfiguration.accountFieldValue
-    
-        if ([string]::IsNullOrEmpty($correlationProperty)) {
-            Write-Warning "Correlation is enabled but not configured correctly."
-            Throw "Correlation is enabled but not configured correctly."
+        $correlationField = $actionContext.CorrelationConfiguration.AccountField
+        $correlationValue = $actionContext.CorrelationConfiguration.PersonFieldValue
+
+        if ([string]::IsNullOrEmpty($($correlationField))) {
+            throw 'Correlation is enabled but not configured correctly'
         }
-    
-        if ([string]::IsNullOrEmpty($correlationValue)) {
-            Write-Warning "The correlation value for [$correlationProperty] is empty. This is likely a scripting issue."
-            Throw "The correlation value for [$correlationProperty] is empty. This is likely a scripting issue."
+        if ([string]::IsNullOrEmpty($($correlationValue))) {
+            throw 'Correlation is enabled but [accountFieldValue] is empty. Please make sure it is correctly mapped'
         }
+
+        Write-Information "Verifying if an AFAS Profit employee exists where $correlationField is: [$correlationValue]"
+
+        $tokenRequestBody = @{
+            grant_type    = 'client_credentials'
+            client_id     = $actionContext.Configuration.ClientId
+            client_secret = $actionContext.Configuration.ClientSecret
+        }
+
+        $splatTokenParams = @{
+            Uri             = "$($actionContext.Configuration.BaseUri)/oauth/token"
+            Method          = 'POST'
+            Body            = $tokenRequestBody
+            ContentType     = 'application/x-www-form-urlencoded'
+            UseBasicParsing = $true
+            ErrorAction     = 'Stop'
+            Verbose         = $false
+        }
+
+        $tokenResponse = Invoke-RestMethod @splatTokenParams
+
+        if ([String]::IsNullOrWhiteSpace([String]$tokenResponse.access_token)) {
+            throw 'OAuth token endpoint did not return an access_token.'
+        }
+
+        if ([String]::IsNullOrWhiteSpace([String]$tokenResponse.token_type) -or ([String]$tokenResponse.token_type).ToLowerInvariant() -ne 'bearer') {
+            throw "OAuth token endpoint returned an unexpected token_type [$($tokenResponse.token_type)]. Expected [Bearer]."
+        }
+
+        $headers = @{
+            Authorization = "$($tokenResponse.token_type) $($tokenResponse.access_token)"
+            IntegrationId = '45963_140664' # Fixed value - Tools4ever Partner Integration ID
+        }
+
+        # BcCo is required to match the KnPerson record in the update payload.
+        $notEmptyFilterValue = [uri]::EscapeDataString('[is niet leeg]')
+        $splatQueryParams = @{
+            Uri             = "$($actionContext.Configuration.BaseUri)/connectors/$($actionContext.Configuration.GetConnector)?filterfieldids=$($correlationField),BcCo&filtervalues=$([uri]::EscapeDataString($correlationValue)),$notEmptyFilterValue&operatortypes=1,9"
+            Method          = 'GET'
+            Headers         = $headers
+            ContentType     = 'application/json;charset=utf-8'
+            UseBasicParsing = $true
+            ErrorAction     = 'Stop'
+            Verbose         = $false
+        }
+
+        $correlatedAccount = @((Invoke-RestMethod @splatQueryParams).rows)
     }
     else {
-        $outputContext.AuditLogs.Add([PSCustomObject]@{
-                Message = "Configuration of correlation is mandatory."
-                IsError = $true
-            })
-        Throw "Configuration of correlation is mandatory."
+        throw 'Correlation is not enabled but this connector only supports correlation.'
     }
 
-    Write-Verbose "Querying AFAS employee where [$($correlationProperty)] = [$($correlationValue)]"
-
-    # Create authorization headers using OAuth client credentials
-    $tokenUri = "$($actionContext.Configuration.BaseUri)/oauth/token"
-    Write-Verbose "Requesting OAuth access token from [$tokenUri]"
-
-    $tokenRequestBody = @{
-        grant_type    = 'client_credentials'
-        client_id     = $actionContext.Configuration.ClientId
-        client_secret = $actionContext.Configuration.ClientSecret
+    if ($correlatedAccount.Count -eq 0) {
+        $lifecycleProcess = 'NotFound'
+    }
+    elseif ($correlatedAccount.Count -eq 1) {
+        $correlatedAccount = $correlatedAccount[0]
+        $lifecycleProcess = 'CorrelateAccount'
+    }
+    elseif ($correlatedAccount.Count -gt 1) {
+        throw "Multiple employees found for person where $correlationField is: [$correlationValue]"
     }
 
-    $tokenResponse = Invoke-RestMethod -Method Post -Uri $tokenUri -Body $tokenRequestBody -ContentType 'application/x-www-form-urlencoded' -UseBasicParsing -Verbose:$false
+    # Process
+    switch ($lifecycleProcess) {
+        'CorrelateAccount' {
+            Write-Information "Correlating AFAS Profit employee [$($correlatedAccount.EmId)]"
 
-    if ([String]::IsNullOrWhiteSpace([String]$tokenResponse.access_token)) {
-        throw "OAuth token endpoint did not return an access_token."
-    }
-
-    if ([String]::IsNullOrWhiteSpace([String]$tokenResponse.token_type) -or ([String]$tokenResponse.token_type).ToLowerInvariant() -ne 'bearer') {
-        throw "OAuth token endpoint returned an unexpected token_type [$($tokenResponse.token_type)]. Expected [Bearer]."
-    }
-
-    $Headers = @{ Authorization = "$($tokenResponse.token_type) $($tokenResponse.access_token)" }
-    $Headers.Add("IntegrationId", "45963_140664") # Fixed value - Tools4ever Partner Integration ID
-
-    $splatWebRequest = @{
-        Uri             = "$($actionContext.Configuration.BaseUri)/connectors/$($actionContext.Configuration.GetConnector)?filterfieldids=$($correlationProperty)&filtervalues=$($correlationValue)&operatortypes=1"
-        Headers         = $headers
-        Method          = 'GET'
-        ContentType     = "application/json;charset=utf-8"
-        UseBasicParsing = $true
-    }
-    $currentAccount = (Invoke-RestMethod @splatWebRequest -Verbose:$false).rows
-
-    if ($null -eq $currentAccount.Medewerker) {
-        throw "No AFAS employee found AFAS employee where [$($correlationProperty)] = [$($correlationValue)]"
-    }
-
-    if (-Not($actionContext.DryRun -eq $true)) {
-        $outputContext.AuditLogs.Add([PSCustomObject]@{
-                Action  = "CorrelateAccount"
-                Message = "Correlated account [$($currentAccount.Medewerker)] on field [$($correlationProperty)] with value [$($correlationValue)]"
-                IsError = $false
-            })
-
-        $aRef = [PSCustomObject]@{
-            Medewerker     = $currentAccount.Medewerker
-            Persoonsnummer = $currentAccount.Persoonsnummer
+            $outputContext.Data = $correlatedAccount | Select-Object -Property $outputContext.Data.PSObject.Properties.Name
+            $outputContext.AccountReference = [string]$correlatedAccount.EmId
+            $outputContext.AccountCorrelated = $true
+            $outputContext.Success = $true
+            $outputContext.AuditLogs.Add([PSCustomObject]@{
+                    Action  = 'CorrelateAccount'
+                    Message = "Correlated account: [$($outputContext.AccountReference)] on field: [$($correlationField)] with value: [$($correlationValue)]"
+                    IsError = $false
+                })
+            break
         }
-        $outputContext.AccountCorrelated = $true
-        $outputContext.AccountReference = $aRef
-    }
-    else {
-        Write-Warning "DryRun: Would correlate AFAS employee [$($currentAccount.Medewerker)]."
-    }
 
+        'NotFound' {
+            $auditLogMessage = "No AFAS Profit employee found where [$($correlationField)] = [$($correlationValue)] with a person number [BcCo]. This connector only supports correlation."
+            Write-Information $auditLogMessage
 
+            $outputContext.Success = $false
+            $outputContext.AuditLogs.Add([PSCustomObject]@{
+                    Action  = 'CorrelateAccount'
+                    Message = $auditLogMessage
+                    IsError = $true
+                })
+            break
+        }
+    }
 }
 catch {
+    $outputContext.Success = $false
     $ex = $PSItem
-    $errorMessage = Get-ErrorMessage -ErrorObject $ex
-
-    Write-Verbose "Error at Line [$($ex.InvocationInfo.ScriptLineNumber)]: $($ex.InvocationInfo.Line). Error: $($errorMessage.VerboseErrorMessage)"
-
+    if ($($ex.Exception.GetType().FullName -eq 'Microsoft.PowerShell.Commands.HttpResponseException') -or
+        $($ex.Exception.GetType().FullName -eq 'System.Net.WebException')) {
+        $errorObj = Resolve-AFASProfitError -ErrorObject $ex
+        $auditLogMessage = "Could not correlate AFAS Profit employee. Error: $($errorObj.FriendlyMessage)"
+        Write-Warning "Error at Line '$($errorObj.ScriptLineNumber)': $($errorObj.Line). Error: $($errorObj.ErrorDetails)"
+    }
+    else {
+        $auditLogMessage = "Could not correlate AFAS Profit employee. Error: $($ex.Exception.Message)"
+        Write-Warning "Error at Line '$($ex.InvocationInfo.ScriptLineNumber)': $($ex.InvocationInfo.Line). Error: $($ex.Exception.Message)"
+    }
     $outputContext.AuditLogs.Add([PSCustomObject]@{
-            Action  = "CorrelateAccount"
-            Message = "Error querying AFAS employee where [$($correlationProperty)] = [$($correlationValue)]. Error Message: $($errorMessage.AuditErrorMessage)"
+            Action  = 'CorrelateAccount'
+            Message = $auditLogMessage
             IsError = $true
         })
-}
-finally {
-    # Check if auditLogs contains errors, if errors are found, set succes to false
-    if ($outputContext.AuditLogs.IsError -contains $true) {
-        $outputContext.Success = $false
-    }
 }

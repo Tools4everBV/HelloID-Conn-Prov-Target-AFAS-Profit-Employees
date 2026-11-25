@@ -2,25 +2,24 @@
   "Version": "v1",
   "MappingFields": [
     {
-      "Name": "Medewerker",
-      "Description": "[Mandatory]",
+      "Name": "EmId",
+      "Description": "[Required] Correlation value (employee number)",
       "Type": "Text",
       "MappingActions": [
         {
           "MapForActions": [
-            "Create",
-            "Update"
+            "Create"
           ],
           "MappingMode": "Field",
           "Value": "\"Person.ExternalId\"",
           "UsedInNotifications": false,
-          "StoreInAccountData": true
+          "StoreInAccountData": false
         }
       ]
     },
     {
-      "Name": "Persoonsnummer",
-      "Description": "[Mandatory]",
+      "Name": "BcCo",
+      "Description": "Person number. Filled by the scripts from AFAS, stored in account data and used to match the person in the update payload. Never updated.",
       "Type": "Text",
       "MappingActions": [
         {
@@ -37,7 +36,7 @@
     },
     {
       "Name": "EmAd",
-      "Description": "",
+      "Description": "Work email. Cleared on delete, because the value has to be unique within AFAS.",
       "Type": "Text",
       "MappingActions": [
         {
@@ -46,7 +45,7 @@
             "Update"
           ],
           "MappingMode": "Complex",
-          "Value": "\"function getEmail() {\\r\\n    let mail = '';\\r\\n\\r\\n    if (typeof Person.Accounts.MicrosoftActiveDirectory.mail !== 'undefined' && Person.Accounts.MicrosoftActiveDirectory.mail) {\\r\\n        mail = Person.Accounts.MicrosoftActiveDirectory.mail;\\r\\n    }\\r\\n\\r\\n    return mail;\\r\\n}\\r\\n\\r\\ngetEmail()\"",
+          "Value": "\"function getEmail() {\\r\\n    let mail = '';\\r\\n\\r\\n    if (typeof Person.Accounts.MicrosoftActiveDirectory.mail !== 'undefined' && Person.Accounts.MicrosoftActiveDirectory.mail) {\\r\\n        mail = Person.Accounts.MicrosoftActiveDirectory.mail;\\r\\n    }\\r\\n\\r\\n    return mail;\\r\\n}\\r\\n\\r\\ngetEmail();\"",
           "UsedInNotifications": false,
           "StoreInAccountData": true
         },

@@ -6,6 +6,7 @@
     "templateOptions": {
       "label": "Base Uri",
       "placeholder": "https://12345.rest.afas.online/profitrestservices",
+      "description": "Base URL of the AFAS Profit REST services endpoint.",
       "required": true
     }
   },
@@ -35,10 +36,11 @@
   {
     "key": "GetConnector",
     "type": "input",
-    "defaultValue": "T4E_HelloID_Users_v2",
+    "defaultValue": "T4E_HelloID_Target_Employees",
     "templateOptions": {
       "label": "GetConnector",
-      "placeholder": "T4E_HelloID_Users_v2",
+      "placeholder": "T4E_HelloID_Target_Employees",
+      "description": "Name of the AFAS GetConnector.",
       "required": true
     }
   },
@@ -49,27 +51,8 @@
     "templateOptions": {
       "label": "UpdateConnector",
       "placeholder": "KnEmployee",
+      "description": "Name of the AFAS UpdateConnector used for employee mutations.",
       "required": true
-    }
-  },
-  {
-    "key": "onlyUpdateOnCorrelate",
-    "type": "checkbox",
-    "defaultValue": false,
-    "templateOptions": {
-      "label": "Only update on correlate",
-      "required": false,
-      "description": "When toggled, the AFAS employee will only be updated when the account is correlated"
-    }
-  },
-  {
-    "key": "isDebug",
-    "type": "checkbox",
-    "defaultValue": false,
-    "templateOptions": {
-      "label": "Toggle debug logging",
-      "description": "When toggled, debug logging will be displayed",
-      "required": false
     }
   }
 ]
