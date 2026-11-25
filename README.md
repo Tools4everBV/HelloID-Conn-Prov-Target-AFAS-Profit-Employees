@@ -1,6 +1,9 @@
 # HelloID-Conn-Prov-Target-AFAS-Profit-Employees
 
 > [!WARNING]
+> Version 4.0.0 contains a different authentication method. The migration runbook can be found here: [issue #26](https://github.com/Tools4everBV/HelloID-Conn-Prov-Target-AFAS-Profit-Employees/issues/26).
+
+> [!WARNING]
 > Version 5.0.0 is **not backward compatible** with version 4.x. The account reference, the correlation field, the GetConnector, the field mapping and the configuration have changed. Upgrade with a clean go-live of the connector, see [MIGRATION.md](./MIGRATION.md).
 
 > [!IMPORTANT]
