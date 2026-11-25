@@ -65,16 +65,7 @@ try {
             throw 'Correlation is enabled but [accountFieldValue] is empty. Please make sure it is correctly mapped'
         }
 
-        # AFAS splits [filtervalues] on the comma. A comma in the value silently shifts all following filter values, which returns a wrong match instead of an error. EscapeDataString does not cover this.
-        if ($correlationValue -match '[,;]') {
-            throw "Correlation value [$correlationValue] contains a comma or semicolon, which cannot be used in AFAS [filtervalues]"
-        }
-
         Write-Information "Verifying if an AFAS Profit employee exists where $correlationField is: [$correlationValue]"
-
-        # Create authorization headers using OAuth client credentials
-        $tokenUri = "$($actionContext.Configuration.BaseUri)/oauth/token"
-        Write-Verbose "Requesting OAuth access token from [$tokenUri]"
 
         $tokenRequestBody = @{
             grant_type    = 'client_credentials'
@@ -82,7 +73,17 @@ try {
             client_secret = $actionContext.Configuration.ClientSecret
         }
 
-        $tokenResponse = Invoke-RestMethod -Method Post -Uri $tokenUri -Body $tokenRequestBody -ContentType 'application/x-www-form-urlencoded' -UseBasicParsing -ErrorAction Stop -Verbose:$false
+        $splatTokenParams = @{
+            Uri             = "$($actionContext.Configuration.BaseUri)/oauth/token"
+            Method          = 'POST'
+            Body            = $tokenRequestBody
+            ContentType     = 'application/x-www-form-urlencoded'
+            UseBasicParsing = $true
+            ErrorAction     = 'Stop'
+            Verbose         = $false
+        }
+
+        $tokenResponse = Invoke-RestMethod @splatTokenParams
 
         if ([String]::IsNullOrWhiteSpace([String]$tokenResponse.access_token)) {
             throw 'OAuth token endpoint did not return an access_token.'
@@ -106,6 +107,7 @@ try {
             ContentType     = 'application/json;charset=utf-8'
             UseBasicParsing = $true
             ErrorAction     = 'Stop'
+            Verbose         = $false
         }
 
         $correlatedAccount = @((Invoke-RestMethod @splatQueryParams).rows)

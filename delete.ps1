@@ -54,9 +54,6 @@ try {
     if ([string]::IsNullOrEmpty($($actionContext.References.Account))) {
         throw 'The account reference could not be found'
     }
-    if ($actionContext.References.Account -match '[,;]') {
-        throw 'Account reference contains a comma or semicolon, which cannot be used in AFAS filter values'
-    }
 
     # Reconciliation resolutions are not supported. AFAS employees are never deleted, and an employee that is not managed by HelloID cannot be reliably distinguished from an employee outside the scope of HelloID.
     if ($actionContext.Origin -eq 'reconciliation') {
@@ -65,17 +62,23 @@ try {
 
     Write-Information 'Verifying if an AFAS Profit employee exists'
 
-    # Create authorization headers using OAuth client credentials
-    $tokenUri = "$($actionContext.Configuration.BaseUri)/oauth/token"
-    Write-Verbose "Requesting OAuth access token from [$tokenUri]"
-
     $tokenRequestBody = @{
         grant_type    = 'client_credentials'
         client_id     = $actionContext.Configuration.ClientId
         client_secret = $actionContext.Configuration.ClientSecret
     }
 
-    $tokenResponse = Invoke-RestMethod -Method Post -Uri $tokenUri -Body $tokenRequestBody -ContentType 'application/x-www-form-urlencoded' -UseBasicParsing -ErrorAction Stop -Verbose:$false
+    $splatTokenParams = @{
+        Uri             = "$($actionContext.Configuration.BaseUri)/oauth/token"
+        Method          = 'POST'
+        Body            = $tokenRequestBody
+        ContentType     = 'application/x-www-form-urlencoded'
+        UseBasicParsing = $true
+        ErrorAction     = 'Stop'
+        Verbose         = $false
+    }
+
+    $tokenResponse = Invoke-RestMethod @splatTokenParams
 
     if ([String]::IsNullOrWhiteSpace([String]$tokenResponse.access_token)) {
         throw 'OAuth token endpoint did not return an access_token.'
@@ -97,6 +100,7 @@ try {
         ContentType     = 'application/json;charset=utf-8'
         UseBasicParsing = $true
         ErrorAction     = 'Stop'
+        Verbose         = $false
     }
 
     $correlatedAccount = @((Invoke-RestMethod @splatQueryParams).rows)
@@ -173,11 +177,12 @@ try {
                 ContentType     = 'application/json;charset=utf-8'
                 UseBasicParsing = $true
                 ErrorAction     = 'Stop'
+                Verbose         = $false
             }
 
             if (-not($actionContext.DryRun -eq $true)) {
                 Write-Information "Deleting AFAS Profit employee with accountReference: [$($actionContext.References.Account)]. Update payload fields: [$fieldsInPayload]"
-                $null = Invoke-RestMethod @splatUpdateParams -Verbose:$false
+                $null = Invoke-RestMethod @splatUpdateParams
                 $auditLogMessage = "Delete AFAS Profit employee with accountReference: [$($actionContext.References.Account)] was successful. Update payload fields: [$fieldsInPayload]"
             }
             else {

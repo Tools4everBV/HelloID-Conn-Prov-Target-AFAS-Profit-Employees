@@ -55,17 +55,23 @@ try {
 
     Write-Information "Starting AFAS Employees account entitlement import through get-connector [$($actionContext.Configuration.GetConnector)]"
 
-    # Create authorization headers using OAuth client credentials
-    $tokenUri = "$($actionContext.Configuration.BaseUri)/oauth/token"
-    Write-Verbose "Requesting OAuth access token from [$tokenUri]"
-
     $tokenRequestBody = @{
         grant_type    = 'client_credentials'
         client_id     = $actionContext.Configuration.ClientId
         client_secret = $actionContext.Configuration.ClientSecret
     }
 
-    $tokenResponse = Invoke-RestMethod -Method Post -Uri $tokenUri -Body $tokenRequestBody -ContentType 'application/x-www-form-urlencoded' -UseBasicParsing -ErrorAction Stop -Verbose:$false
+    $splatTokenParams = @{
+        Uri             = "$($actionContext.Configuration.BaseUri)/oauth/token"
+        Method          = 'POST'
+        Body            = $tokenRequestBody
+        ContentType     = 'application/x-www-form-urlencoded'
+        UseBasicParsing = $true
+        ErrorAction     = 'Stop'
+        Verbose         = $false
+    }
+
+    $tokenResponse = Invoke-RestMethod @splatTokenParams
 
     if ([String]::IsNullOrWhiteSpace([String]$tokenResponse.access_token)) {
         throw 'OAuth token endpoint did not return an access_token.'
@@ -87,8 +93,16 @@ try {
     $processedAccountReferences = [System.Collections.Generic.HashSet[string]]::new()
 
     do {
-        $uri = "$($actionContext.Configuration.BaseUri)/connectors/$($actionContext.Configuration.GetConnector)?$Filter&skip=$skip&take=$take&orderbyfieldids=EmId"
-        $dataset = Invoke-RestMethod -Method Get -Uri $uri -Headers $Headers -ContentType 'application/json;charset=utf-8' -UseBasicParsing -ErrorAction Stop
+        $splatGetParams = @{
+            Uri             = "$($actionContext.Configuration.BaseUri)/connectors/$($actionContext.Configuration.GetConnector)?$Filter&skip=$skip&take=$take&orderbyfieldids=EmId"
+            Method          = 'GET'
+            Headers         = $Headers
+            ContentType     = 'application/json;charset=utf-8'
+            UseBasicParsing = $true
+            ErrorAction     = 'Stop'
+            Verbose         = $false
+        }
+        $dataset = Invoke-RestMethod @splatGetParams
         $downloadedRecordCount += @($dataset.rows).Count
 
         foreach ($importedAccount in $dataset.rows) {

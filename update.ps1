@@ -54,15 +54,8 @@ try {
     if ([string]::IsNullOrEmpty($($actionContext.References.Account))) {
         throw 'The account reference could not be found'
     }
-    if ($actionContext.References.Account -match '[,;]') {
-        throw 'Account reference contains a comma or semicolon, which cannot be used in AFAS filter values'
-    }
 
     Write-Information 'Verifying if an AFAS Profit employee exists'
-
-    # Create authorization headers using OAuth client credentials
-    $tokenUri = "$($actionContext.Configuration.BaseUri)/oauth/token"
-    Write-Verbose "Requesting OAuth access token from [$tokenUri]"
 
     $tokenRequestBody = @{
         grant_type    = 'client_credentials'
@@ -70,7 +63,17 @@ try {
         client_secret = $actionContext.Configuration.ClientSecret
     }
 
-    $tokenResponse = Invoke-RestMethod -Method Post -Uri $tokenUri -Body $tokenRequestBody -ContentType 'application/x-www-form-urlencoded' -UseBasicParsing -ErrorAction Stop -Verbose:$false
+    $splatTokenParams = @{
+        Uri             = "$($actionContext.Configuration.BaseUri)/oauth/token"
+        Method          = 'POST'
+        Body            = $tokenRequestBody
+        ContentType     = 'application/x-www-form-urlencoded'
+        UseBasicParsing = $true
+        ErrorAction     = 'Stop'
+        Verbose         = $false
+    }
+
+    $tokenResponse = Invoke-RestMethod @splatTokenParams
 
     if ([String]::IsNullOrWhiteSpace([String]$tokenResponse.access_token)) {
         throw 'OAuth token endpoint did not return an access_token.'
@@ -92,6 +95,7 @@ try {
         ContentType     = 'application/json;charset=utf-8'
         UseBasicParsing = $true
         ErrorAction     = 'Stop'
+        Verbose         = $false
     }
 
     $correlatedAccount = @((Invoke-RestMethod @splatQueryParams).rows)
@@ -189,11 +193,12 @@ try {
                 ContentType     = 'application/json;charset=utf-8'
                 UseBasicParsing = $true
                 ErrorAction     = 'Stop'
+                Verbose         = $false
             }
 
             if (-not($actionContext.DryRun -eq $true)) {
                 Write-Information "Updating AFAS Profit employee with accountReference: [$($actionContext.References.Account)]"
-                $null = Invoke-RestMethod @splatUpdateParams -Verbose:$false
+                $null = Invoke-RestMethod @splatUpdateParams
             }
             else {
                 Write-Information "[DryRun] Update AFAS Profit employee with accountReference: [$($actionContext.References.Account)], will be executed during enforcement"
@@ -206,7 +211,6 @@ try {
             $outputContext.Data | Add-Member -MemberType NoteProperty -Name 'BcCo' -Value $correlatedAccount.BcCo -Force
             $outputContext.Success = $true
             $outputContext.AuditLogs.Add([PSCustomObject]@{
-                    Action  = 'UpdateAccount'
                     Message = "Update account was successful, Account property(s) updated: [$($accountPropertiesChanged.Name -join ',')]"
                     IsError = $false
                 })
@@ -219,7 +223,6 @@ try {
             $outputContext.Data | Add-Member -MemberType NoteProperty -Name 'BcCo' -Value $correlatedAccount.BcCo -Force
             $outputContext.Success = $true
             $outputContext.AuditLogs.Add([PSCustomObject]@{
-                    Action  = 'UpdateAccount'
                     Message = "Skipped updating AFAS Profit employee with accountReference: [$($actionContext.References.Account)]. Reason: No changes."
                     IsError = $false
                 })
@@ -231,7 +234,6 @@ try {
 
             $outputContext.Success = $false
             $outputContext.AuditLogs.Add([PSCustomObject]@{
-                    Action  = 'UpdateAccount'
                     Message = "AFAS Profit employee with accountReference: [$($actionContext.References.Account)] could not be found, indicating that it may have been deleted or is out of scope of the GetConnector"
                     IsError = $true
                 })
@@ -255,7 +257,6 @@ catch {
     }
 
     $outputContext.AuditLogs.Add([PSCustomObject]@{
-            Action  = 'UpdateAccount'
             Message = $auditLogMessage
             IsError = $true
         })

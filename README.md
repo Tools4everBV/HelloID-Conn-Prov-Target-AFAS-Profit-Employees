@@ -1,5 +1,8 @@
 # HelloID-Conn-Prov-Target-AFAS-Profit-Employees
 
+> [!WARNING]
+> Version 5.0.0 is **not backward compatible** with version 4.x. The account reference, the correlation field, the GetConnector, the field mapping and the configuration have changed. Upgrade with a clean go-live of the connector, see [MIGRATION.md](./MIGRATION.md).
+
 > [!IMPORTANT]
 > This repository contains the connector and configuration code only. The implementer is responsible to acquire the connection details such as username, password, certificate, etc. You might even need to sign a contract or agreement with the supplier before implementing this connector. Please contact the client's application manager to coordinate the connector requirements.
 
@@ -49,7 +52,7 @@ _HelloID-Conn-Prov-Target-AFAS-Profit-Employees_ is a _target_ connector. _AFAS-
 The following features are available:
 
 | Feature                                   | Supported | Actions                | Remarks                               |
-|-------------------------------------------|-----------|------------------------|---------------------------------------|
+| ----------------------------------------- | --------- | ---------------------- | ------------------------------------- |
 | **Account Lifecycle**                     | ✅         | Create, Update, Delete | Correlation only                      |
 | **Permissions**                           | ❌         | -                      |                                       |
 | **Resources**                             | ❌         | -                      |                                       |
@@ -93,7 +96,7 @@ https://raw.githubusercontent.com/Tools4everBV/HelloID-Conn-Prov-Target-AFAS-Pro
 The field ids of the GetConnector are equal to the AFAS field codes of `KnEmployee` / `KnPerson`. This allows the scripts to compare the field mapping with AFAS without a translation table. The GetConnector must return a single row per employee, see [One row per employee](#one-row-per-employee).
 
 | Field id    | AFAS description | Usage                                     |
-|-------------|------------------|-------------------------------------------|
+| ----------- | ---------------- | ----------------------------------------- |
 | EmId        | Medewerker       | Correlation and account reference         |
 | BcCo        | Persoonsnummer   | Match of the person in the update payload |
 | Nm          | Naam             | Display name in the account import        |
@@ -107,7 +110,7 @@ The field ids of the GetConnector are equal to the AFAS field codes of `KnEmploy
 The following settings are required to connect to the API.
 
 | Setting         | Description                                             | Mandatory |
-|-----------------|---------------------------------------------------------|-----------|
+| --------------- | ------------------------------------------------------- | --------- |
 | Base Uri        | The URL to the AFAS environment REST services           | Yes       |
 | Client ID       | The OAuth client id of the AppConnector                 | Yes       |
 | Client Secret   | The OAuth client secret of the AppConnector             | Yes       |
@@ -119,7 +122,7 @@ The following settings are required to connect to the API.
 The data collection retrieved by the GetConnector is sufficient for HelloID to provision persons. The data collection can be changed by the customer itself to meet their requirements.
 
 | Connector                                               | Field               | Default filter            |
-|---------------------------------------------------------|---------------------|---------------------------|
+| ------------------------------------------------------- | ------------------- | ------------------------- |
 | __Tools4ever - HelloID - T4E_HelloID_Target_Employees__ | contract start date | <[Vandaag + 3 maanden]    |
 |                                                         | contract end date   | >[Vandaag - 3 maanden];[] |
 
@@ -128,7 +131,7 @@ The data collection retrieved by the GetConnector is sufficient for HelloID to p
 The correlation configuration is used to specify which properties will be used to match an existing account within _AFAS Profit_ to a person in _HelloID_.
 
 | Setting                   | Value                             |
-|---------------------------|-----------------------------------|
+| ------------------------- | --------------------------------- |
 | Enable correlation        | `True`                            |
 | Person correlation field  | `PersonContext.Person.ExternalId` |
 | Account correlation field | `EmId`                            |
@@ -141,7 +144,7 @@ The correlation configuration is used to specify which properties will be used t
 The field mapping can be imported by using the [_fieldMapping.json_](./fieldMapping.json) file.
 
 | Field | Actions                | Description                                                               |
-|-------|------------------------|---------------------------------------------------------------------------|
+| ----- | ---------------------- | ------------------------------------------------------------------------- |
 | EmId  | Create                 | Correlation on employee number                                            |
 | BcCo  | Create, Update         | Person number, filled by the scripts from AFAS. Never updated             |
 | EmAd  | Create, Update, Delete | Work email address. Cleared on delete, as it has to be unique within AFAS |
@@ -218,7 +221,7 @@ For more information about updating a free field, please check the [AFAS documen
 The following endpoints are used by the connector.
 
 | Endpoint                       | HTTP Method | Description                    |
-|--------------------------------|-------------|--------------------------------|
+| ------------------------------ | ----------- | ------------------------------ |
 | profitrestservices/oauth/token | POST        | Retrieve an OAuth access token |
 | profitrestservices/connectors  | GET         | Retrieve employee information  |
 | profitrestservices/connectors  | PUT         | Update employee information    |
